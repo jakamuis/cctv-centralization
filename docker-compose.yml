@@ -1,0 +1,119 @@
+# Docker Compose configuration for CCTV-Centralization project
+# Defines services: frontend, backend, postgres, go2rtc, nginx
+# Uses bridge networking, persistent volume for postgres, and restart policies
+
+
+version: '3.9'
+
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: cctv_postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - cctv_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    container_name: cctv_backend
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BACKEND_PORT: 8000
+
+    ports:
+      - "8000:8000"
+
+    networks:
+      - cctv_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    container_name: cctv_frontend
+
+    restart: unless-stopped
+
+    environment:
+      VITE_BACKEND_URL: http://localhost:8000
+
+    ports:
+      - "5173:5173"
+
+    networks:
+      - cctv_network
+
+  go2rtc:
+    image: alexxit/go2rtc:latest
+    container_name: cctv_go2rtc
+
+    restart: unless-stopped
+
+    volumes:
+      - ./go2rtc/go2rtc.yaml:/config/go2rtc.yaml:ro
+
+    ports:
+      - "1984:1984"
+      - "8554:8554"
+      - "8555:8555"
+
+    networks:
+      - cctv_network
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: cctv_nginx
+
+    restart: unless-stopped
+
+    depends_on:
+      - frontend
+      - backend
+      - go2rtc
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+    ports:
+      - "80:80"
+
+    networks:
+      - cctv_network
+
+volumes:
+  postgres_data:
+
+networks:
+  cctv_network:
+    driver: bridge

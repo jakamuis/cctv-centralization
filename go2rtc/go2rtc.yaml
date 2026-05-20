@@ -1,0 +1,14 @@
+# Placeholder go2rtc configuration for CCTV-Centralization
+# This is a minimal config file for the go2rtc streaming gateway
+
+log:
+  level: info
+
+http:
+  address: :1984
+
+webrtc:
+  enabled: true
+
+streams:
+  # Add your camera streams here in the future
