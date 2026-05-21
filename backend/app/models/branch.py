@@ -1,18 +1,23 @@
-from sqlalchemy import Column, String, Boolean, Text, Index
+from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from app.db.base import Base
-from app.models.base import UUIDMixin, TimestampMixin
 
-class Branch(UUIDMixin, TimestampMixin, Base):
+from app.db.session import Base
+
+
+class Region(Base):
+    __tablename__ = "regions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+
+    branches = relationship("Branch", back_populates="region")
+
+
+class Branch(Base):
     __tablename__ = "branches"
 
-    branch_code = Column(String(20), unique=True, nullable=False, index=True)
-    branch_name = Column(String(100), nullable=False)
-    address = Column(Text, nullable=True)
-    timezone = Column(String(50), nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+    region_id = Column(Integer, ForeignKey("regions.id", ondelete="SET NULL"), nullable=True)
 
-    users = relationship("User", back_populates="branch", cascade="all, delete-orphan")
-    devices = relationship("Device", back_populates="branch", cascade="all, delete-orphan")
-
-Index("ix_branches_branch_code", Branch.branch_code)
+    region = relationship("Region", back_populates="branches")

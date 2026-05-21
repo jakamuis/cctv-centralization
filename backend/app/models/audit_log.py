@@ -1,18 +1,20 @@
-from sqlalchemy import Column, String, ForeignKey, Text, DateTime, Index
-from sqlalchemy.orm import relationship
-from app.db.base import Base
-from app.models.base import UUIDMixin, TimestampMixin
+from datetime import datetime
 
-class AuditLog(UUIDMixin, TimestampMixin, Base):
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+
+from app.db.session import Base
+
+
+class AuditLog(Base):
     __tablename__ = "audit_logs"
 
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
-    action = Column(Text, nullable=False)
-    resource_type = Column(String(50), nullable=False)
-    resource_id = Column(String(36), nullable=True)
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    action = Column(String(255), nullable=False)
+    target_type = Column(String(100), nullable=True)
+    target_id = Column(String(100), nullable=True)
     ip_address = Column(String(45), nullable=True)
-    user_agent = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    user = relationship("User", back_populates="audit_logs")
-
-Index("ix_audit_logs_user_action", AuditLog.user_id, AuditLog.action)
+    user = relationship("User", backref="audit_logs")

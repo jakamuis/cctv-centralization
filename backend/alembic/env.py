@@ -17,7 +17,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 from core.config import settings
 
-config.set_main_option("sqlalchemy.url", settings.DATABASE_SYNC_URL)
+sync_database_url = settings.DATABASE_URL.replace(
+    "postgresql+asyncpg",
+    "postgresql"
+)
+
+config.set_main_option("sqlalchemy.url", sync_database_url)
+
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
