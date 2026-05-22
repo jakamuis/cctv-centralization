@@ -20,6 +20,14 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_DAYS: 7
 
+      # go2rtc internal host (Docker service name) for backend proxy calls
+      STREAMING_GO2RTC_HOST: go2rtc
+      # go2rtc public URL the browser uses — host machine exposes port 1984
+      STREAMING_GO2RTC_PUBLIC_URL: http://localhost:1984
+
+    volumes:
+      - ./backend:/app
+
     depends_on:
       - postgres
       - redis

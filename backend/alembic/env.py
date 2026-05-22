@@ -11,27 +11,15 @@ load_dotenv()
 import os
 import sys
 
-sys.path.append(os.path.abspath("."))
+# Ensure the backend directory is on the path so `app.*` imports work
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from app.models.base import Base
-import app.models
+# Import Base first (shared metadata object)
+from app.models.base import Base  # noqa: E402
 
-# Import all models to ensure they are registered for Alembic autogenerate
-# Commenting out models with foreign key dependencies that cause import errors during migration generation
-# from app.models.user import User
-# from app.models.audit_log import AuditLog
-from app.models.branch import Branch
-from app.models.camera import Camera
-# from app.models.role import Role
-# from app.models.device import Device
-from app.models.site import Site
-# from app.models.alerts import Alerts  # Commented out due to import error
-# from app.models.current_device_state import CurrentDeviceState
-# from app.models.telemetry_history import TelemetryHistory
-# from app.models.stream_sessions import StreamSessions  # Commented out due to import error
+# Import ALL models so Alembic autogenerate can see every table.
+# Order matters: models with no FK deps first, then dependents.
+import app.models  # noqa: E402  (imports all models via __init__.py)
 
 config = context.config
 

@@ -4,7 +4,7 @@ from typing import List, Optional
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Table
 from sqlalchemy.orm import relationship
 
-from app.db.session import Base
+from app.models.base import Base
 
 # Association table for many-to-many relationship between users and roles
 user_roles = Table(

@@ -1,8 +1,10 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+import os
 
 
 class DatabaseSettings(BaseSettings):
+    database_url: Optional[str] = None
     postgres_user: str = "postgres"
     postgres_password: str = "postgres"
     postgres_db: str = "cctv_db"
@@ -21,8 +23,11 @@ class DatabaseSettings(BaseSettings):
             return "postgres"
         return self.postgres_host
 
-    @property
-    def database_url(self) -> str:
+    def get_database_url(self) -> str:
+        # Prioritize DATABASE_URL environment variable
+        if self.database_url:
+            return self.database_url
+        # Fallback to constructed URL
         return (
             f"postgresql+asyncpg://"
             f"{self.postgres_user}:"
@@ -56,6 +61,10 @@ class FrontendSettings(BaseSettings):
 class StreamingSettings(BaseSettings):
     go2rtc_http_address: str = ":1984"
     go2rtc_host: str = "go2rtc"
+    # Public-facing base URL for go2rtc that the browser can reach.
+    # In local dev this is http://localhost:1984
+    # In Docker/production set STREAMING_GO2RTC_PUBLIC_URL accordingly.
+    go2rtc_public_url: str = "http://localhost:1984"
     idle_timeout_seconds: int = 30
 
     model_config = SettingsConfigDict(

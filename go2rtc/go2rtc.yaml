@@ -1,3 +1,6 @@
+api:
+  origin: "*"
+
 streams:
   cam01:
     url: rtsp://admin:Indogas*19%23@192.168.2.100:554/Streaming/Channels/102

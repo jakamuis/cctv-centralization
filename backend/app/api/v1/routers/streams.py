@@ -9,11 +9,11 @@ from app.models.user import User
 from app.repositories.camera import CameraRepository
 from app.db.session import get_db
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.stream.manager import start_or_join_stream, leave_or_stop_stream, list_active_streams
 from app.stream.models import StartStreamRequest, StartStreamResponse, StopStreamResponse
-from app.security.stream_token import mint_stream_token, validate_stream_token
+from app.security.stream_token import validate_stream_token
 from app.api.v1.dependencies import user_has_permission, has_camera_access
 from app.core.config import settings
 import httpx
@@ -26,10 +26,10 @@ router = APIRouter(prefix="/streams", tags=["Streams"])
 async def start_stream(
     camera_id: UUID,
     payload: StartStreamRequest | None = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    cam = CameraRepository(db).get_by_id(camera_id)
+    cam = await CameraRepository(db).get_by_id(camera_id)
     if not cam or not cam.enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found or disabled")
 
@@ -42,17 +42,17 @@ async def start_stream(
     viewer_id: Optional[str] = payload.viewer_id if payload else str(current_user.id)
     session = await start_or_join_stream(str(cam.id), cam.stream_name, viewer_id=viewer_id)
 
-    # Issue short-lived HLS token tied to camera and user
-    token, jti, exp_dt = await mint_stream_token(str(cam.id), user_id=str(current_user.id))
-
-    # Backend-proxied HLS URL (never expose go2rtc directly)
-    proxy_hls = f"/api/v1/streams/hls/{cam.id}/index.m3u8?token={token}"
+    # Build the direct go2rtc HLS URL that the browser can reach.
+    # go2rtc_public_url is the browser-accessible base (e.g. http://localhost:1984).
+    # Auth/RBAC has already been enforced above; the stream_name is the go2rtc key.
+    public_base = settings.streaming.go2rtc_public_url.rstrip("/")
+    hls_url = f"{public_base}/api/stream.m3u8?src={cam.stream_name}"
 
     return StartStreamResponse(
         session_id=session.session_id,
         camera_id=session.camera_id,
         stream_name=session.stream_name,
-        hls_url=proxy_hls,
+        hls_url=hls_url,
         viewer_count=session.viewer_count,
     )
 
@@ -60,10 +60,10 @@ async def start_stream(
 @router.delete("/live/{camera_id}", response_model=StopStreamResponse)
 async def stop_stream(
     camera_id: UUID,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    cam = CameraRepository(db).get_by_id(camera_id)
+    cam = await CameraRepository(db).get_by_id(camera_id)
     if not cam:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
@@ -104,7 +104,7 @@ async def _proxy_go2rtc_request(go2rtc_path: str) -> Response:
 
 
 @router.get("/hls/{camera_id}/index.m3u8")
-async def hls_master_playlist(camera_id: UUID, token: str = Query(...)):
+async def hls_master_playlist(camera_id: UUID, token: str = Query(...), db: AsyncSession = Depends(get_db)):
     # Validate token and camera binding
     try:
         payload = await validate_stream_token(token)
@@ -118,16 +118,14 @@ async def hls_master_playlist(camera_id: UUID, token: str = Query(...)):
     src = str(camera_id)  # our manager uses camera UUID mapping to stream_name, but we need actual name
     # To avoid an extra DB hit, expect client to first call /live which ensures go2rtc route exists by stream_name
     # We fetch stream_name via ID
-    from app.db.session import get_db
-    db = next(get_db())
-    cam = CameraRepository(db).get_by_id(camera_id)
+    cam = await CameraRepository(db).get_by_id(camera_id)
     if not cam or not cam.enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found or disabled")
     return await _proxy_go2rtc_request(f"/api/stream.m3u8?src={cam.stream_name}")
 
 
 @router.get("/hls/{camera_id}/{rest:path}")
-async def hls_child(camera_id: UUID, rest: str, token: str = Query(...)):
+async def hls_child(camera_id: UUID, rest: str, token: str = Query(...), db: AsyncSession = Depends(get_db)):
     # Validate token and camera binding for every HLS fetch (segments and variant playlists)
     try:
         payload = await validate_stream_token(token)
@@ -137,9 +135,7 @@ async def hls_child(camera_id: UUID, rest: str, token: str = Query(...)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Token-camera mismatch")
 
     # Forward request to go2rtc HLS file for the stream
-    from app.db.session import get_db
-    db = next(get_db())
-    cam = CameraRepository(db).get_by_id(camera_id)
+    cam = await CameraRepository(db).get_by_id(camera_id)
     if not cam or not cam.enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found or disabled")
 

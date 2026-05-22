@@ -1,41 +1,49 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
+import bcrypt as _bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a plain-text password against a bcrypt hash."""
+    return _bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8"),
+    )
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    """Hash a plain-text password with bcrypt."""
+    return _bcrypt.hashpw(password.encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.utcnow() + (
+        expires_delta or timedelta(minutes=settings.security.jwt_access_token_expire_minutes)
+    )
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    secret = settings.security.jwt_secret_key or "changeme"
+    encoded_jwt = jwt.encode(to_encode, secret, algorithm=settings.security.jwt_algorithm)
     return encoded_jwt
 
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
+    expire = datetime.utcnow() + (expires_delta or timedelta(days=7))
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    secret = settings.security.jwt_secret_key or "changeme"
+    encoded_jwt = jwt.encode(to_encode, secret, algorithm=settings.security.jwt_algorithm)
     return encoded_jwt
 
 
 def decode_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        secret = settings.security.jwt_secret_key or "changeme"
+        payload = jwt.decode(token, secret, algorithms=[settings.security.jwt_algorithm])
         return payload
     except JWTError:
         return {}

@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { api, buildStreamUrl } from '../api'
+import { api } from '../api'
 import BranchSidebar from '../ui/BranchSidebar'
 import CameraTable from '../ui/CameraTable'
 import SearchBar from '../ui/SearchBar'
 import RefreshButton from '../ui/RefreshButton'
 
-export default function Dashboard() {
+export default function Dashboard({ user, onLogout }) {
   const [branches, setBranches] = useState([])
   const [branchesLoading, setBranchesLoading] = useState(false)
   const [branchesError, setBranchesError] = useState('')
@@ -93,11 +93,6 @@ export default function Dashboard() {
     return filtered.slice(start, end)
   }, [filtered, pageClamped, perPage])
 
-  function onOpenStream(streamName) {
-    const url = buildStreamUrl(streamName)
-    window.open(url, '_blank', 'noopener')
-  }
-
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -111,6 +106,31 @@ export default function Dashboard() {
         />
       </aside>
       <main className="content">
+        {user && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '0.75rem 1rem',
+            background: '#f8f9fa',
+            borderBottom: '1px solid #dee2e6',
+            marginBottom: '1rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span style={{ fontWeight: '500' }}>
+                {user.full_name || user.username}
+              </span>
+              {user.roles && user.roles.length > 0 && (
+                <span style={{ fontSize: '0.85rem', color: '#666' }}>
+                  {user.roles.join(', ')}
+                </span>
+              )}
+            </div>
+            <button onClick={onLogout} style={{ padding: '0.5rem 1rem' }}>
+              Logout
+            </button>
+          </div>
+        )}
         <div className="toolbar">
           <div className="filters">
             <SearchBar value={query} onChange={setQuery} placeholder="Search cameras..." />
@@ -140,7 +160,6 @@ export default function Dashboard() {
           page={pageClamped}
           totalPages={totalPages}
           onPageChange={setPage}
-          onOpenStream={onOpenStream}
         />
       </main>
     </div>

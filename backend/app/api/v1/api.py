@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 from starlette.requests import Request
@@ -33,7 +34,7 @@ from app.api.v1.endpoints.branches import router as branches_router
 from app.api.v1.endpoints.cameras import router as cameras_v2_router
 
 
-router = APIRouter(prefix="/api/v1")
+router = APIRouter()
 
 
 # =========================
@@ -41,12 +42,15 @@ router = APIRouter(prefix="/api/v1")
 # =========================
 
 @router.post("/auth/login")
-def login(
+async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     request: Request = None
 ):
-    user = db.query(User).filter(User.username == form_data.username).first()
+    result = await db.execute(
+        select(User).where(User.username == form_data.username)
+    )
+    user = result.scalar_one_or_none()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
 
@@ -57,7 +61,7 @@ def login(
         )
 
         db.add(audit)
-        db.commit()
+        await db.commit()
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -86,7 +90,7 @@ def login(
     )
 
     db.add(audit)
-    db.commit()
+    await db.commit()
 
     return {
         "access_token": access_token,
@@ -95,9 +99,9 @@ def login(
 
 
 @router.post("/auth/logout")
-def logout(
+async def logout(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     request: Request = None
 ):
     audit = AuditLog(
@@ -107,13 +111,13 @@ def logout(
     )
 
     db.add(audit)
-    db.commit()
+    await db.commit()
 
     return {"msg": "Successfully logged out"}
 
 
 @router.get("/auth/me")
-def read_users_me(current_user: User = Depends(get_current_user)):
+async def read_users_me(current_user: User = Depends(get_current_user)):
     return {
         "id": current_user.id,
         "username": current_user.username,
@@ -129,12 +133,13 @@ def read_users_me(current_user: User = Depends(get_current_user)):
 # =========================
 
 @router.get("/users", dependencies=[Depends(require_role("SUPER_ADMIN"))])
-def list_users(db: Session = Depends(get_db)):
-    return db.query(User).all()
+async def list_users(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User))
+    return result.scalars().all()
 
 
 @router.post("/users", dependencies=[Depends(require_role("SUPER_ADMIN"))])
-def create_user(user_data: dict, db: Session = Depends(get_db)):
+async def create_user(user_data: dict, db: AsyncSession = Depends(get_db)):
 
     hashed_password = get_password_hash(user_data["password"])
 
@@ -147,8 +152,8 @@ def create_user(user_data: dict, db: Session = Depends(get_db)):
     )
 
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
 
     audit = AuditLog(
         user_id=None,
@@ -158,15 +163,16 @@ def create_user(user_data: dict, db: Session = Depends(get_db)):
     )
 
     db.add(audit)
-    db.commit()
+    await db.commit()
 
     return user
 
 
 @router.put("/users/{user_id}", dependencies=[Depends(require_role("SUPER_ADMIN"))])
-def update_user(user_id: int, user_data: dict, db: Session = Depends(get_db)):
+async def update_user(user_id: int, user_data: dict, db: AsyncSession = Depends(get_db)):
 
-    user = db.query(User).filter(User.id == user_id).first()
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -179,7 +185,7 @@ def update_user(user_id: int, user_data: dict, db: Session = Depends(get_db)):
         elif hasattr(user, key):
             setattr(user, key, value)
 
-    db.commit()
+    await db.commit()
 
     audit = AuditLog(
         user_id=None,
@@ -189,21 +195,22 @@ def update_user(user_id: int, user_data: dict, db: Session = Depends(get_db)):
     )
 
     db.add(audit)
-    db.commit()
+    await db.commit()
 
     return user
 
 
 @router.delete("/users/{user_id}", dependencies=[Depends(require_role("SUPER_ADMIN"))])
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
 
-    user = db.query(User).filter(User.id == user_id).first()
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    db.delete(user)
-    db.commit()
+    await db.delete(user)
+    await db.commit()
 
     audit = AuditLog(
         user_id=None,
@@ -213,19 +220,21 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     )
 
     db.add(audit)
-    db.commit()
+    await db.commit()
 
     return {"detail": "User deleted"}
 
 
 @router.get("/roles")
-def list_roles(db: Session = Depends(get_db)):
-    return db.query(Role).all()
+async def list_roles(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Role))
+    return result.scalars().all()
 
 
 @router.get("/permissions")
-def list_permissions(db: Session = Depends(get_db)):
-    return db.query(Permission).all()
+async def list_permissions(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Permission))
+    return result.scalars().all()
 
 
 # =========================
