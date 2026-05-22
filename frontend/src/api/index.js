@@ -161,6 +161,18 @@ export const api = {
   },
 }
 
+// ============================================
+// Discovery API (Phase 7B — no auth required temporarily)
+// ============================================
+
+export const discoveryApi = {
+  getNvrs: () => httpGet('/api/v1/discovery/nvrs'),
+  getChannels: (nvrId) => httpGet(`/api/v1/discovery/nvrs/${nvrId}/channels`),
+  // Register channel with go2rtc and get back stream_name
+  startChannelStream: (nvrId, channelId) =>
+    httpPost(`/api/v1/discovery/nvrs/${nvrId}/channels/${channelId}/stream`),
+}
+
 export function buildStreamUrl(streamName) {
   const tpl = import.meta.env.VITE_GO2RTC_STREAM_URL_TEMPLATE
   const base = import.meta.env.VITE_GO2RTC_BASE_URL || ''

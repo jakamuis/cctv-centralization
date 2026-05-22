@@ -29,6 +29,9 @@ from app.api.v1.routers.telemetry import router as telemetry_router
 from app.api.v1.routers.streams import router as streams_router
 from app.api.v1.routers.alerts import router as alerts_router
 
+# Phase 7B — Discovery sync router
+from app.api.v1.routers.discovery import router as discovery_router
+
 # Import new endpoints
 from app.api.v1.endpoints.branches import router as branches_router
 from app.api.v1.endpoints.cameras import router as cameras_v2_router
@@ -255,5 +258,8 @@ router.include_router(alerts_router)
 router.include_router(branches_router)
 router.include_router(cameras_v2_router)
 router.include_router(streams_router)
+
+# Phase 7B — Discovery
+router.include_router(discovery_router)
 
 api_router = router

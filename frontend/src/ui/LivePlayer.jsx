@@ -4,8 +4,7 @@ import { api, getViewerId } from '../api'
 const LOG = (...args) => console.log('[LivePlayer]', ...args)
 const ERR = (...args) => console.error('[LivePlayer]', ...args)
 
-// go2rtc public base URL — must be reachable from the browser
-const GO2RTC_URL = 'http://localhost:1984'
+// go2rtc is proxied via nginx at /go2rtc/ — no hardcoded host needed
 
 /**
  * MSE-over-WebSocket player for go2rtc.
@@ -86,8 +85,10 @@ function useMsePlayer(videoRef, streamName, enabled) {
       LOG('MediaSource sourceopen')
       URL.revokeObjectURL(video.src)
 
-      // Connect WebSocket
-      const wsUrl = `ws://localhost:1984/api/ws?src=${encodeURIComponent(streamName)}`
+      // Connect WebSocket via nginx proxy at /go2rtc/
+      // Derive ws:// or wss:// from the current page protocol
+      const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = `${wsProto}//${window.location.host}/go2rtc/api/ws?src=${encodeURIComponent(streamName)}`
       LOG('Connecting WebSocket:', wsUrl)
       const ws = new WebSocket(wsUrl)
       ws.binaryType = 'arraybuffer'

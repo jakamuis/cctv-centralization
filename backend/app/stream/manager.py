@@ -25,9 +25,7 @@ def _now_iso() -> str:
 
 
 def _hls_url(stream_name: str) -> str:
-    host = settings.streaming.go2rtc_host
-    addr = settings.streaming.go2rtc_http_address.lstrip(":") or "1984"
-    return f"http://{host}:{addr}/api/stream.m3u8?src={stream_name}"
+    return f"{settings.streaming.internal_go2rtc_url}/api/stream.m3u8?src={stream_name}"
 
 
 async def start_or_join_stream(camera_id: str, stream_name: str, viewer_id: Optional[str] = None) -> StreamSession:

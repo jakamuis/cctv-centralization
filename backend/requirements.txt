@@ -10,4 +10,7 @@ python-multipart
 redis
 greenlet
 python-dotenv
+# httpx is used for:
+#   - Hikvision ISAPI calls (DigestAuth, async HTTP) — discovery/isapi_client.py
+#   - Google Sheet CSV download — discovery/csv_loader.py
 httpx

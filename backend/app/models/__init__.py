@@ -20,5 +20,9 @@ from .audit_log import AuditLog
 from .user import User  # auth model
 from .role import Role, Permission  # auth/RBAC models
 
+# Phase 7B — Discovery models (must be imported so Alembic sees the tables)
+from .discovered_nvr import DiscoveredNVR
+from .nvr_channel import NVRChannel
+
 # Removed Region import as it is no longer used
 # from app.models.region import Region

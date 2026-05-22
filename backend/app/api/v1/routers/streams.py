@@ -90,9 +90,7 @@ async def active_streams():
 
 
 async def _proxy_go2rtc_request(go2rtc_path: str) -> Response:
-    base_host = settings.streaming.go2rtc_host
-    base_addr = settings.streaming.go2rtc_http_address.lstrip(":") or "1984"
-    url = f"http://{base_host}:{base_addr}{go2rtc_path}"
+    url = f"{settings.streaming.internal_go2rtc_url}{go2rtc_path}"
     async with httpx.AsyncClient(timeout=10) as client:
         r = await client.get(url)
         headers = {
