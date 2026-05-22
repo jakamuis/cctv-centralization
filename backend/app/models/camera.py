@@ -1,18 +1,38 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Index
+from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from app.db.base import Base
-from app.models.base import UUIDMixin, TimestampMixin
+from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime
+from .base import Base, UUIDMixin
 
-class Camera(UUIDMixin, TimestampMixin, Base):
+
+class Camera(UUIDMixin, Base):
     __tablename__ = "cameras"
 
-    device_id = Column(String(36), ForeignKey("devices.id"), nullable=False, index=True)
-    channel_number = Column(Integer, nullable=False)
-    camera_name = Column(String(100), nullable=False)
-    stream_path = Column(String(255), nullable=True)
-    is_recording = Column(Boolean, default=False, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    branch_id = Column(UUID(as_uuid=True), ForeignKey("branches.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    stream_name = Column(String(255), unique=True, nullable=False)
+    rtsp_channel = Column(String(50), nullable=True)
+    status = Column(String(50), nullable=True)
+    enabled = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
-    device = relationship("Device", back_populates="cameras")
+    # Removed legacy device relationship to fix import script errors
+    # device_id = Column(
+    #     UUID(as_uuid=True),
+    #     ForeignKey("devices.id"),
+    #     nullable=True,
+    #     index=True,
+    # )
+    #
+    # device = relationship(
+    #     "Device",
+    #     back_populates="cameras",
+    # )
 
-Index("ix_cameras_device_channel", Camera.device_id, Camera.channel_number, unique=True)
+
+# Define relationship after class definition to avoid import order issues
+def _setup_relationships():
+    from .branch import Branch
+    Camera.branch = relationship(Branch, lazy="raise")
+
+_setup_relationships()

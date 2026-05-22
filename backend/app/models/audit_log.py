@@ -1,20 +1,15 @@
+from sqlalchemy import Column, DateTime, String, ForeignKey
 from datetime import datetime
-
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-
-from app.db.session import Base
+from sqlalchemy.dialects.postgresql import UUID
+from .base import Base, UUIDMixin
 
 
-class AuditLog(Base):
+class AuditLog(UUIDMixin, Base):
     __tablename__ = "audit_logs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     action = Column(String(255), nullable=False)
-    target_type = Column(String(100), nullable=True)
-    target_id = Column(String(100), nullable=True)
+    entity = Column(String(100), nullable=False)
+    entity_id = Column(String(100), nullable=False)
     ip_address = Column(String(45), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    user = relationship("User", backref="audit_logs")
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)

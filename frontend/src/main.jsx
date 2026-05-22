@@ -1,12 +1,5 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-
-function App() {
-  return (
-    <div>
-      <h1>Hello, CCTV-Centralization Frontend!</h1>
-    </div>
-  )
-}
+import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />)

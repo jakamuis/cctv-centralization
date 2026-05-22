@@ -4,42 +4,57 @@ from starlette.middleware.cors import CORSMiddleware
 import logging
 
 from app.core.config import settings
-from app.db.session import async_session_maker
 from app.api.v1.api import api_router
 
-app = FastAPI(title="CCTV Centralization Backend")
+logger = logging.getLogger(__name__)
 
-# Structured logging setup
-logger = logging.getLogger("uvicorn.access")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+app = FastAPI(
+    title="CCTV Centralization Backend",
+    version="1.0.0",
 )
 
-# CORS middleware example (optional, can be adjusted later)
+# =========================
+# CORS
+# =========================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Health check endpoint
+# =========================
+# HEALTH CHECK
+# =========================
+
 @app.get("/health", tags=["Health"])
 async def health():
-    return JSONResponse(content={"status": "healthy"})
+    return JSONResponse(
+        content={
+            "status": "healthy"
+        }
+    )
 
-# Include API v1 router without prefix here (prefix handled in api.py)
+# =========================
+# API ROUTES
+# =========================
+
 app.include_router(api_router)
 
-# Startup event handler
+# =========================
+# STARTUP
+# =========================
+
 @app.on_event("startup")
 async def on_startup():
-    logger.info("Starting up backend application")
+    logger.info("Backend application started")
 
-# Shutdown event handler
+# =========================
+# SHUTDOWN
+# =========================
+
 @app.on_event("shutdown")
 async def on_shutdown():
-    logger.info("Shutting down backend application")
-
+    logger.info("Backend application stopped")

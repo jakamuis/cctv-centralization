@@ -1,41 +1,89 @@
-version: "3.8"
-
 services:
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    volumes:
-      - ./backend:/app
+
+    container_name: cctv_backend
+    restart: unless-stopped
+
     ports:
       - "8000:8000"
+
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/cctv_db
-      - REDIS_URL=redis://redis:6379/0
-      - JWT_SECRET=supersecretkey
-      - JWT_ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=15
-      - REFRESH_TOKEN_EXPIRE_DAYS=7
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/cctv_db
+      REDIS_URL: redis://redis:6379/0
+
+      JWT_SECRET: supersecretkey
+      JWT_ALGORITHM: HS256
+
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+
     depends_on:
       - postgres
       - redis
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+    command: >
+      uvicorn main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
 
   postgres:
     image: postgres:15
-    restart: always
+
+    container_name: cctv_postgres
+    restart: unless-stopped
+
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: cctv_db
+
+    ports:
+      - "5432:5432"
+
     volumes:
       - pgdata:/var/lib/postgresql/data
 
   redis:
     image: redis:7
-    restart: always
+
+    container_name: cctv_redis
+    restart: unless-stopped
+
     ports:
       - "6379:6379"
 
+  nginx:
+    image: nginx:latest
+    container_name: cctv_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./streams:/streams:rw
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - stream-worker
+    networks:
+      - internal
+
+  stream-worker:
+    build:
+      context: ./docker/ffmpeg
+    container_name: cctv_stream_worker
+    restart: unless-stopped
+    volumes:
+      - ./streams:/streams:rw
+      - ./go2rtc/go2rtc.yaml:/config/go2rtc.yaml:ro
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
 volumes:
-  pgdata:
+  pgdata: {}
