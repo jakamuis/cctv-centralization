@@ -25,6 +25,7 @@ from app.api.v1.routers.site import router as sites_router
 from app.api.v1.routers.device import router as devices_router
 from app.api.v1.routers.camera import router as cameras_router
 from app.api.v1.routers.telemetry import router as telemetry_router
+from app.api.v1.routers.streams import router as streams_router
 from app.api.v1.routers.alerts import router as alerts_router
 
 # Import new endpoints
@@ -244,5 +245,6 @@ router.include_router(alerts_router)
 # Include new routers
 router.include_router(branches_router)
 router.include_router(cameras_v2_router)
+router.include_router(streams_router)
 
 api_router = router

@@ -9,6 +9,8 @@ from app.db.session import get_db
 from app.models.user import User
 from app.security import jwt
 from app.models.role import Role
+from app.models.camera import Camera
+from sqlalchemy.orm import Session
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -60,6 +62,23 @@ def require_permission(permission_code: str):
         return user
 
     return permission_checker
+
+
+def user_has_permission(user: User, permission_code: str) -> bool:
+    perms = {perm.code for role in user.roles for perm in role.permissions}
+    return permission_code in perms
+
+
+def has_camera_access(user: User, camera: Camera) -> bool:
+    """
+    Branch/camera scope validation placeholder.
+    - SUPER_ADMIN: full access
+    - Otherwise: require camera.view permission. Fine-grained scoping
+      (by user->branch or user->camera mapping) can be added later.
+    """
+    if user.has_role("SUPER_ADMIN"):
+        return True
+    return user_has_permission(user, "camera.view")
 
 
 def require_branch_access(branch_id: int, user: User = Depends(get_current_user)):

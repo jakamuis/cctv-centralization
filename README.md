@@ -4,6 +4,8 @@
 
 This backend service provides a centralized CCTV monitoring platform with features including JWT authentication, RBAC, secure user management, audit logging, and more. It is built with FastAPI, PostgreSQL, Redis, and Docker.
 
+**Runtime**: Python 3.11+ (required for modern typing syntax support)
+
 ## Features Implemented in Phase 4
 
 - JWT Authentication (access and refresh tokens)

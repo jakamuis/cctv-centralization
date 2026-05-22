@@ -23,6 +23,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - go2rtc
 
     command: >
       uvicorn main:app
@@ -56,6 +57,25 @@ services:
     ports:
       - "6379:6379"
 
+  go2rtc:
+    image: ghcr.io/alexxit/go2rtc:latest
+    container_name: cctv_go2rtc
+    restart: unless-stopped
+    environment:
+      - GO2RTC_API=true
+      - GO2RTC_DEBUG=false
+    volumes:
+      - ./go2rtc/go2rtc.yaml:/config/go2rtc.yaml:ro
+    ports:
+      - "1984:1984" # HTTP API/HLS
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:1984/" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
   nginx:
     image: nginx:latest
     container_name: cctv_nginx
@@ -66,20 +86,20 @@ services:
       - ./streams:/streams:rw
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - stream-worker
+      - go2rtc
     networks:
       - internal
 
-  stream-worker:
-    build:
-      context: ./docker/ffmpeg
-    container_name: cctv_stream_worker
-    restart: unless-stopped
-    volumes:
-      - ./streams:/streams:rw
-      - ./go2rtc/go2rtc.yaml:/config/go2rtc.yaml:ro
-    networks:
-      - internal
+  # Optional legacy ffmpeg worker (disabled in favor of go2rtc)
+  # stream-worker:
+  #   build:
+  #     context: ./docker/ffmpeg
+  #   container_name: cctv_stream_worker
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./streams:/streams:rw
+  #   networks:
+  #     - internal
 
 networks:
   internal:
@@ -87,3 +107,4 @@ networks:
 
 volumes:
   pgdata: {}
+  # go2rtc_data: {}

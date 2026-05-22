@@ -55,6 +55,8 @@ class FrontendSettings(BaseSettings):
 
 class StreamingSettings(BaseSettings):
     go2rtc_http_address: str = ":1984"
+    go2rtc_host: str = "go2rtc"
+    idle_timeout_seconds: int = 30
 
     model_config = SettingsConfigDict(
         env_prefix="STREAMING_",
@@ -67,6 +69,10 @@ class SecuritySettings(BaseSettings):
     jwt_secret_key: Optional[str] = None
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
+    # Stream token specific settings
+    stream_token_secret: Optional[str] = None
+    stream_token_algorithm: str = "HS256"
+    stream_token_expire_seconds: int = 300  # 5 minutes default
 
     model_config = SettingsConfigDict(
         env_prefix="SECURITY_",
@@ -80,6 +86,9 @@ class Settings(BaseSettings):
     backend: BackendSettings = BackendSettings()
     frontend: FrontendSettings = FrontendSettings()
     streaming: StreamingSettings = StreamingSettings()
+    
+    # Redis
+    redis_url: str = "redis://localhost:6379/0"
     security: SecuritySettings = SecuritySettings()
 
     allowed_origins: list[str] = ["*"]

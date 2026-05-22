@@ -5,6 +5,7 @@ import logging
 
 from app.core.config import settings
 from app.api.v1.api import api_router
+from app.stream.manager import start_background_cleanup
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,8 @@ app.include_router(api_router)
 @app.on_event("startup")
 async def on_startup():
     logger.info("Backend application started")
+    # Start background cleanup for idle streams
+    start_background_cleanup()
 
 # =========================
 # SHUTDOWN
