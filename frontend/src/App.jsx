@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Dashboard from './pages/Dashboard'
 import Discovery from './pages/Discovery'
+import Playback from './pages/Playback'
 import Login from './pages/Login'
 import { isAuthenticated, authApi, clearAuthToken } from './api'
 import './styles.css'
@@ -8,6 +9,7 @@ import './styles.css'
 const NAV_TABS = [
   { id: 'dashboard',  label: '📹 Dashboard' },
   { id: 'discovery',  label: '🔍 Discovery' },
+  { id: 'playback',   label: '📼 Playback' },
 ]
 
 export default function App() {
@@ -124,6 +126,7 @@ export default function App() {
       <main>
         {activePage === 'dashboard' && <Dashboard user={user} onLogout={handleLogout} />}
         {activePage === 'discovery' && <Discovery />}
+        {activePage === 'playback' && <Playback />}
       </main>
     </div>
   )

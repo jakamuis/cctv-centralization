@@ -32,6 +32,9 @@ from app.api.v1.routers.alerts import router as alerts_router
 # Phase 7B — Discovery sync router
 from app.api.v1.routers.discovery import router as discovery_router
 
+# Phase 9 — Playback System
+from app.api.v1.routers.playback import router as playback_router
+
 # Import new endpoints
 from app.api.v1.endpoints.branches import router as branches_router
 from app.api.v1.endpoints.cameras import router as cameras_v2_router
@@ -261,5 +264,8 @@ router.include_router(streams_router)
 
 # Phase 7B — Discovery
 router.include_router(discovery_router)
+
+# Phase 9 — Playback System
+router.include_router(playback_router)
 
 api_router = router

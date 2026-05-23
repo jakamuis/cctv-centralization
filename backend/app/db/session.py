@@ -10,34 +10,34 @@ from app.models.base import Base
 
 DATABASE_URL = settings.database.get_database_url()
 
+# ---------------------------------------------------------------------------
+# Shared module-level singletons
+# ---------------------------------------------------------------------------
+# Create the engine ONCE at import time so the connection pool is shared
+# across all requests and background workers.
 
-def get_engine():
-    """Create the shared async engine used across the app.
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    future=True,
+    pool_pre_ping=True,
+)
 
-    NOTE: We intentionally import ``Base`` from ``app.models.base`` so that
-    *all* ORM models (including auth/RBAC models) share a single metadata
-    object. Alembic's ``target_metadata`` points at this same Base, which
-    ensures autogenerate can see every table.
-    """
-
-    return create_async_engine(
-        DATABASE_URL,
-        echo=False,
-        future=True,
-        pool_pre_ping=True,
-    )
+# Shared session factory — used by both FastAPI dependency injection (get_db)
+# and background workers (e.g. playback cleanup) that need a DB session
+# outside of a request context.
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
-def get_async_session_maker():
-    engine = get_engine()
-    return async_sessionmaker(
-        bind=engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-
+# ---------------------------------------------------------------------------
+# FastAPI dependency
+# ---------------------------------------------------------------------------
 
 async def get_db():
-    async_session_maker = get_async_session_maker()
-    async with async_session_maker() as session:
+    """Yield an AsyncSession for use in FastAPI route dependencies."""
+    async with AsyncSessionLocal() as session:
         yield session

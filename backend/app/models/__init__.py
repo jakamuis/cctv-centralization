@@ -24,5 +24,8 @@ from .role import Role, Permission  # auth/RBAC models
 from .discovered_nvr import DiscoveredNVR
 from .nvr_channel import NVRChannel
 
+# Phase 9 — Playback System
+from .playback_session import PlaybackSession
+
 # Removed Region import as it is no longer used
 # from app.models.region import Region

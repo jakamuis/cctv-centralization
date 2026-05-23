@@ -190,3 +190,69 @@ export function getViewerId() {
   }
   return sessionStorage.getItem(key)
 }
+
+// ============================================
+// Playback API (Phase 9)
+// ============================================
+
+export const playbackApi = {
+  /**
+   * Search for recording segments on a device/channel within a time window.
+   */
+  searchRecordings: (deviceId, channel, startTime, endTime) =>
+    httpPost('/api/v1/playback/search', {
+      device_id: deviceId,
+      channel,
+      start_time: startTime instanceof Date ? startTime.toISOString() : startTime,
+      end_time: endTime instanceof Date ? endTime.toISOString() : endTime,
+    }),
+
+  /**
+   * Get timeline blocks (recording + gap) for a device/channel/window.
+   */
+  getTimeline: (deviceId, channel, startTime, endTime) =>
+    httpPost('/api/v1/playback/timeline', {
+      device_id: deviceId,
+      channel,
+      start_time: startTime instanceof Date ? startTime.toISOString() : startTime,
+      end_time: endTime instanceof Date ? endTime.toISOString() : endTime,
+    }),
+
+  /**
+   * Create a playback session. Returns session_id, stream_name, stream_url.
+   */
+  createSession: (deviceId, channel, startTime, endTime) =>
+    httpPost('/api/v1/playback/session', {
+      device_id: deviceId,
+      channel,
+      start_time: startTime instanceof Date ? startTime.toISOString() : startTime,
+      end_time: endTime instanceof Date ? endTime.toISOString() : endTime,
+    }),
+
+  /**
+   * Extend session TTL (heartbeat / keep-alive).
+   */
+  heartbeat: (sessionId) =>
+    httpPost(`/api/v1/playback/session/${sessionId}/heartbeat`),
+
+  /**
+   * Destroy a playback session and clean up go2rtc stream.
+   */
+  deleteSession: (sessionId) =>
+    httpDelete(`/api/v1/playback/session/${sessionId}`),
+
+  /**
+   * Initiate a recording clip download.
+   * Returns a URL to trigger the browser download.
+   */
+  getDownloadUrl: (deviceId, channel, startTime, endTime) => {
+    const token = getAuthToken()
+    const params = new URLSearchParams({
+      device_id: deviceId,
+      channel: String(channel),
+      start_time: startTime instanceof Date ? startTime.toISOString() : startTime,
+      end_time: endTime instanceof Date ? endTime.toISOString() : endTime,
+    })
+    return `/api/v1/playback/download?${params.toString()}`
+  },
+}

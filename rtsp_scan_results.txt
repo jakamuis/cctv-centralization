@@ -1,1 +1,1003 @@
-RTSP Scan Results\n================\nONLINE Channels:\n102\n202\n302\n402\n502\n602\n702\n802\n902\n1002\n1102\n1202\n1302\n1402\n1502\n1602\n1702\n1802\n1902\n2002\n2102\n2202\n2302\n2402\n2502\n2602\n2702\n2802\n2902\n3002\n3102\n3202\n\nOFFLINE Channels:\n
+.venv) jakamuis@Jakas-MacBook-Air cctv-centralization % docker exec -it cctv_backend python /app/scripts/probe_nvr_info.py \
+  --ip 192.168.152.101 \
+  --port 80 \
+  --user anekagasmedan \
+  --pass 'anekagas#2017'
+
+NVR Information Probe
+Target: http://192.168.152.101:80
+User: anekagasmedan
+
+======================================================================
+  PHASE 1: DEVICE IDENTIFICATION AND CAPABILITIES
+======================================================================
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/System/deviceInfo
+  HTTP 200
+  server: Webs
+  content-length: 636
+  content-type: application/xml; charset="UTF-8"
+  Body (636 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <DeviceInfo version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <deviceName>Network Video Recorder</deviceName>
+    <deviceID>48443236-3130-3837-3432-988b0adcdfc7</deviceID>
+    <model>DS-7616NI-Q1</model>
+    <serialNumber>DS-7616NI-Q11620190603CCRRD26108742WCVU</serialNumber>
+    <macAddress>98:8b:0a:dc:df:c7</macAddress>
+    <firmwareVersion>V3.4.104</firmwareVersion>
+    <firmwareReleasedDate>build 190424</firmwareReleasedDate>
+    <encoderVersion>V5.0</encoderVersion>
+    <encoderReleasedDate>build 190410</encoderReleasedDate>
+    <deviceType>NVR</deviceType>
+    <telecontrolID>255</telecontrolID>
+    </DeviceInfo>
+
+
+────────────────────────────────────────────────────────────
+  GET /PSIA/System/deviceInfo
+  HTTP 404
+  server: Webs
+  content-length: 166
+  content-type: text/html
+  Body (166 bytes):
+    <!DOCTYPE html>
+    <html><head><title>Document Error: Not Found</title></head>
+    <body><h2>Access Error: 404 -- Not Found</h2>
+    <p>Can't open URL</p>
+    </body>
+    </html>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/Streaming/channels
+  HTTP 403
+  server: Webs
+  content-length: 284
+  content-type: application/xml; charset="UTF-8"
+  Body (284 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <ResponseStatus version="1.0" xmlns="urn:psialliance-org">
+    <requestURL>/ISAPI/Streaming/channels</requestURL>
+    <statusCode>4</statusCode>
+    <statusString>Invalid Operation</statusString>
+    <subStatusCode>notSupport</subStatusCode>
+    </ResponseStatus>
+
+
+────────────────────────────────────────────────────────────
+  GET /PSIA/Streaming/channels
+  HTTP 404
+  server: Webs
+  content-length: 166
+  content-type: text/html
+  Body (166 bytes):
+    <!DOCTYPE html>
+    <html><head><title>Document Error: Not Found</title></head>
+    <body><h2>Access Error: 404 -- Not Found</h2>
+    <p>Can't open URL</p>
+    </body>
+    </html>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/record/tracks
+  HTTP 200
+  server: Webs
+  content-length: 50040
+  content-type: application/xml; charset="UTF-8"
+  Body (50040 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <TrackList version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <Track version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>101</id>
+    <Channel>101</Channel>
+    <Enable>false</Enable>
+    <Description>
+    trackType=standard,contentType=video,codecType=H.264-BP,resolution=0x0,framerate=25.0 fps,bitrate=3072 kbps</Description>
+    <TrackGUID>{00000000-0000-0000-0000-000000000000}</TrackGUID>
+    <Size>1</Size>
+    <Duration min="0" max="750">P0DT0H</Duration>
+    <DefaultRecordingMode>CMR</DefaultRecordingMode>
+    <SrcDescriptor>
+    <SrcGUID>{00000000-0000-0000-0000-000000000000}</SrcGUID>
+    <SrcChannel>1</SrcChannel>
+    <StreamHint></StreamHint>
+    <SrcDriver></SrcDriver>
+    <SrcType></SrcType>
+    <SrcUrl>rtsp://localhost/PSIA/Streaming/channels/101</SrcUrl>
+    <SrcUrlMethods></SrcUrlMethods>
+    <SrcLogin></SrcLogin>
+    </SrcDescriptor>
+    <TrackSchedule>
+    <ScheduleBlockList version="1.0">
+    <ScheduleBlock version="1.0">
+    <ScheduleBlockGUID>{00000000-0000-0000-0000-000000000000}</ScheduleBlockGUID>
+    <ScheduleBlockType>www.hikvision.com/racm/schedule/ver10</ScheduleBlockType>
+    <ScheduleAction>
+    <id>1</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Monday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Tuesday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>2</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Tuesday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Wednesday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>3</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Wednesday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Thursday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>4</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Thursday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Friday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>5</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Friday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Saturday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>6</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Saturday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Sunday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>7</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Sunday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Monday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    </ScheduleBlock>
+    </ScheduleBlockList>
+    </TrackSchedule>
+    <CustomExtensionList>
+    <CustomExtension>
+    <CustomExtensionName>www.hikvision.com/RaCM/trackExt/ver10</CustomExtensionName>
+    <enableSchedule>true</enableSchedule>
+    <HolidaySchedule>
+    <ScheduleBlock version="1.0">
+    <ScheduleBlockGUID>{00000000-0000-0000-0000-000000000000}</ScheduleBlockGUID>
+    <ScheduleBlockType>www.hikvision.com/racm/schedule/ver10</ScheduleBlockType>
+    </ScheduleBlock>
+    </HolidaySchedule>
+    </CustomExtension>
+    </CustomExtensionList>
+    </Track>
+
+    ... (truncated, 50040 total bytes)
+
+────────────────────────────────────────────────────────────
+  GET /PSIA/ContentMgmt/record/tracks
+  HTTP 404
+  server: Webs
+  content-length: 166
+  content-type: text/html
+  Body (166 bytes):
+    <!DOCTYPE html>
+    <html><head><title>Document Error: Not Found</title></head>
+    <body><h2>Access Error: 404 -- Not Found</h2>
+    <p>Can't open URL</p>
+    </body>
+    </html>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/InputProxy/channels
+  HTTP 200
+  server: Webs
+  content-length: 4916
+  content-type: application/xml; charset="UTF-8"
+  Body (4916 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <InputProxyChannelList version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema" size="6">
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>1</id>
+    <name>IPCamera 01</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>ONVIF</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.104</ipAddress>
+    <managePortNo>80</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>2</id>
+    <name>Pos Security</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>HIKVISION</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.109</ipAddress>
+    <managePortNo>8001</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>3</id>
+    <name>IPCamera 03</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>ONVIF</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.103</ipAddress>
+    <managePortNo>80</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>4</id>
+    <name>Parkiran Motor</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>HIKVISION</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.105</ipAddress>
+    <managePortNo>8000</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>5</id>
+    <name>IPCamera 05</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>ONVIF</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.110</ipAddress>
+    <managePortNo>80</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>6</id>
+    <name>IPCamera 06</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>ONVIF</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.106</ipAddress>
+    <managePortNo>80</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>7</id>
+    <name>IPCamera 07</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>ONVIF</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.107</ipAddress>
+    <managePortNo>80</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>8</id>
+    <name>IPCamera 08</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>ONVIF</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.108</ipAddress>
+    <managePortNo>80</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>11</id>
+    <name>Timbangan Blkng</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>HIKVISION</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.132</ipAddress>
+    <managePortNo>8000</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    <InputProxyChannel version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>12</id>
+    <name>Pengisian liquid CO2,LIN&amp;LOX</name>
+    <sourceInputPortDescriptor>
+    <proxyProtocol>HIKVISION</proxyProtocol>
+    <addressingFormatType>ipaddress</addressingFormatType>
+    <ipAddress>192.168.152.130</ipAddress>
+    <managePortNo>8000</managePortNo>
+    <srcInputPort>1</srcInputPort>
+    <userName>admin</userName>
+    <streamType>auto</streamType>
+    <deviceID></deviceID>
+    </sourceInputPortDescriptor>
+    </InputProxyChannel>
+    </InputProxyChannelList>
+
+
+────────────────────────────────────────────────────────────
+  GET /PSIA/ContentMgmt/InputProxy/channels
+  HTTP 404
+  server: Webs
+  content-length: 166
+  content-type: text/html
+  Body (166 bytes):
+    <!DOCTYPE html>
+    <html><head><title>Document Error: Not Found</title></head>
+    <body><h2>Access Error: 404 -- Not Found</h2>
+    <p>Can't open URL</p>
+    </body>
+    </html>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/System/capabilities
+  HTTP 200
+  server: Webs
+  content-length: 6949
+  content-type: application/xml; charset="UTF-8"
+  Body (6949 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <DeviceCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <SysCap>
+    <isSupportDst>true</isSupportDst>
+    <NetworkCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <isSupportWireless>false</isSupportWireless>
+    <isSupportWAN>false</isSupportWAN>
+    <isSupportPPPoE>true</isSupportPPPoE>
+    <isSupportBond>false</isSupportBond>
+    <isSupport802_1x>false</isSupport802_1x>
+    <isSupportNtp>true</isSupportNtp>
+    <isSupportFtp>false</isSupportFtp>
+    <isSupportUpnp>true</isSupportUpnp>
+    <isSupportPNP>false</isSupportPNP>
+    <isSupportDdns>true</isSupportDdns>
+    <isSupportHttps>true</isSupportHttps>
+    <SnmpCap>
+    <isSupport>false</isSupport>
+    </SnmpCap>
+    <isSupportExtNetCfg>true</isSupportExtNetCfg>
+    <isSupportNetPreviewStrategy>true</isSupportNetPreviewStrategy>
+    <isSupportEZVIZ>true</isSupportEZVIZ>
+    <GB28181Cap>
+    <isSupportGB28181Service>false</isSupportGB28181Service>
+    </GB28181Cap>
+    <VerificationCodeModification>
+    <verificationCodeType opt="normal,empty">normal</verificationCodeType>
+    <isSupportDeclarationURL>true</isSupportDeclarationURL>
+    <isSupportPrivacyPolicyURL>true</isSupportPrivacyPolicyURL>
+    <verificationCodeModify>true</verificationCodeModify>
+    <Hyperlinks>
+    <declarationURL>https://www.hik-connect.com/views/terms/termsofservice.html</declarationURL>
+    <privacyPolicyURL>https://www.hik-connect.com/views/terms/privacypolicy.html</privacyPolicyURL>
+    </Hyperlinks>
+    <isSupportVerificationCodeCheck>true</isSupportVerificationCodeCheck>
+    </VerificationCodeModification>
+    <isSupportIntegrate>true</isSupportIntegrate>
+    <isSupportEZVIZTiming>true</isSupportEZVIZTiming>
+    </NetworkCap>
+    <IOCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <IOInputPortNums>0</IOInputPortNums>
+    <IOOutputPortNums>0</IOOutputPortNums>
+    </IOCap>
+    <SerialCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <rs485PortNums>0</rs485PortNums>
+    <rs422PortNums>0</rs422PortNums>
+    <rs232PortNums>0</rs232PortNums>
+    <supportRS232Config>false</supportRS232Config>
+    </SerialCap>
+    <VideoCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <videoOutputPortNums>2</videoOutputPortNums>
+    <menuNums>1</menuNums>
+    </VideoCap>
+    <AudioCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <audioInputNums>1</audioInputNums>
+    <audioOutputNums>1</audioOutputNums>
+    </AudioCap>
+    <isSupportHolidy>true</isSupportHolidy>
+    <RebootConfigurationCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <RTSP>true</RTSP>
+    <HTTP>true</HTTP>
+    </RebootConfigurationCap>
+    </SysCap>
+    <voicetalkNums>2</voicetalkNums>
+    <isSupportSnapshot>false</isSupportSnapshot>
+    <SecurityCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <supportUserNums>32</supportUserNums>
+    <userBondIpNums>1</userBondIpNums>
+    <userBondMacNums>1</userBondMacNums>
+    <securityVersion opt="1"/>
+    <keyIterateNum>100</keyIterateNum>
+    <isSupportUserCheck>true</isSupportUserCheck>
+    <isSupportGetOnlineUserListSC>true</isSupportGetOnlineUserListSC>
+    <RSAKeyLength opt="512,1024,2048" def="2048"/>
+    <WebCertificateCap>
+    <CertificateType opt="digest,digest/basic">digest</CertificateType>
+    </WebCertificateCap>
+    <isSupportConfigFileImport>true</isSupportConfigFileImport>
+    <isSupportConfigFileExport>true</isSupportConfigFileExport>
+    <cfgFileSecretKeyLenLimit min="1" max="16"/>
+    </SecurityCap>
+    <EventCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <isSupportHDFull>true</isSupportHDFull>
+    <isSupportHDError>true</isSupportHDError>
+    <isSupportNicBroken>true</isSupportNicBroken>
+    <isSupportIpConflict>true</isSupportIpConflict>
+    <isSupportIllAccess>true</isSupportIllAccess>
+    <isSupportViException>false</isSupportViException>
+    <isSupportViMismatch>false</isSupportViMismatch>
+    <isSupportRecordException>true</isSupportRecordException>
+    <isSupportRaidException>false</isSupportRaidException>
+    <isSupportSmartDetection>false</isSupportSmartDetection>
+    <isSupportSpareException>false</isSupportSpareException>
+    </EventCap>
+    <RacmCap version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <isSupportZeroChan>true</isSupportZeroChan>
+    <inputProxyNums>16</inputProxyNums>
+    <eSATANums>0</eSATANums>
+    <miniSASNums>0</miniSASNums>
+    <nasNums>8</nasNums>
+    <ipSanNums>8</ipSanNums>
+    <isSupportRaid>false</isSupportRaid>
+    <isSupportExtHdCfg>true</isSupportExtHdCfg>
+    <isSupportTransCode>false</isSupportTransCode>
+    <isSupportIpcImport>true</isSupportIpcImport>
+    <isSupportIpcStreamType>true</isSupportIpcStreamType>
+    <isSupportIOInputProxy>true</isSupportIOInputProxy>
+    <isSupportIOOutputProxy>true</isSupportIOOutputProxy>
+    <isSupportPTZRs485Proxy>true</isSupportPTZRs485Proxy>
+    <isSupportSMARTTest>true</isSupportSMARTTest>
+    <pictureSearchType opt="">
+    </pictureSearchType>
+    <recordSearchType opt="CMR,MOTION,ALARM,EDR,ALARMANDMOTION,Command,manual,AllEvent">
+    </recordSearchType>
+    <isSupportActivateIpc>true</isSupportActivateIpc>
+    <isSupportCheckIpcSecurity>
+    <isSupportCheckPassword>true</isSupportCheckPassword>
+    </isSupportCheckIpcSecurity>
+    <isSupportSyncIPCPassword>true</isSupportSyncIPCPassword>
+    <is
+    ... (truncated, 6949 total bytes)
+
+────────────────────────────────────────────────────────────
+  GET /PSIA/System/capabilities
+  HTTP 404
+  server: Webs
+  content-length: 166
+  content-type: text/html
+  Body (166 bytes):
+    <!DOCTYPE html>
+    <html><head><title>Document Error: Not Found</title></head>
+    <body><h2>Access Error: 404 -- Not Found</h2>
+    <p>Can't open URL</p>
+    </body>
+    </html>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/Storage
+  HTTP 200
+  server: Webs
+  content-length: 450
+  content-type: application/xml; charset="UTF-8"
+  Body (450 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <storage version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <hddList>
+    <hdd version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>1</id>
+    <hddName>hdda</hddName>
+    <hddPath></hddPath>
+    <hddType>SATA</hddType>
+    <status>ok</status>
+    <capacity>3815447</capacity>
+    <freeSpace>80896</freeSpace>
+    <property>RW</property>
+    </hdd>
+    </hddList>
+    <nasList>
+    </nasList>
+    <workMode>quota</workMode>
+    </storage>
+
+
+────────────────────────────────────────────────────────────
+  GET /PSIA/ContentMgmt/Storage
+  HTTP 404
+  server: Webs
+  content-length: 166
+  content-type: text/html
+  Body (166 bytes):
+    <!DOCTYPE html>
+    <html><head><title>Document Error: Not Found</title></head>
+    <body><h2>Access Error: 404 -- Not Found</h2>
+    <p>Can't open URL</p>
+    </body>
+    </html>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/record/tracks/101
+  HTTP 200
+  server: Webs
+  content-length: 4925
+  content-type: application/xml; charset="UTF-8"
+  Body (4925 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <Track version="1.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+    <id>101</id>
+    <Channel>101</Channel>
+    <Enable>false</Enable>
+    <Description>
+    trackType=standard,contentType=video,codecType=H.264-BP,resolution=0x0,framerate=25.0 fps,bitrate=3072 kbps</Description>
+    <TrackGUID>{00000000-0000-0000-0000-000000000000}</TrackGUID>
+    <Size>1</Size>
+    <Duration min="0" max="750">P0DT0H</Duration>
+    <DefaultRecordingMode>CMR</DefaultRecordingMode>
+    <SrcDescriptor>
+    <SrcGUID>{00000000-0000-0000-0000-000000000000}</SrcGUID>
+    <SrcChannel>1</SrcChannel>
+    <StreamHint></StreamHint>
+    <SrcDriver></SrcDriver>
+    <SrcType></SrcType>
+    <SrcUrl>rtsp://localhost/PSIA/Streaming/channels/101</SrcUrl>
+    <SrcUrlMethods></SrcUrlMethods>
+    <SrcLogin></SrcLogin>
+    </SrcDescriptor>
+    <TrackSchedule>
+    <ScheduleBlockList version="1.0">
+    <ScheduleBlock version="1.0">
+    <ScheduleBlockGUID>{00000000-0000-0000-0000-000000000000}</ScheduleBlockGUID>
+    <ScheduleBlockType>www.hikvision.com/racm/schedule/ver10</ScheduleBlockType>
+    <ScheduleAction>
+    <id>1</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Monday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Tuesday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>2</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Tuesday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Wednesday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>3</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Wednesday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Thursday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>4</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Thursday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Friday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>5</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Friday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Saturday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>6</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Saturday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Sunday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    <ScheduleAction>
+    <id>7</id>
+    <ScheduleActionStartTime>
+    <DayOfWeek>Sunday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionStartTime>
+    <ScheduleActionEndTime>
+    <DayOfWeek>Monday</DayOfWeek>
+    <TimeOfDay>00:00:00</TimeOfDay>
+    </ScheduleActionEndTime>
+    <ScheduleDSTEnable>false</ScheduleDSTEnable>
+    <Description>nothing</Description>
+    <Actions>
+    <Record>true</Record>
+    <Log>false</Log>
+    <SaveImg>false</SaveImg>
+    <ActionRecordingMode>CMR</ActionRecordingMode>
+    </Actions>
+    </ScheduleAction>
+    </ScheduleBlock>
+    </ScheduleBlockList>
+    </TrackSchedule>
+    <CustomExtensionList>
+    <CustomExtension>
+    <CustomExtensionName>www.hikvision.com/RaCM/trackExt/ver10</CustomExtensionName>
+    <enableSchedule>true</enableSchedule>
+    <HolidaySchedule>
+    <ScheduleBlock version="1.0">
+    <ScheduleBlockGUID>{00000000-0000-0000-0000-000000000000}</ScheduleBlockGUID>
+    <ScheduleBlockType>www.hikvision.com/racm/schedule/ver10</ScheduleBlockType>
+    </ScheduleBlock>
+    </HolidaySchedule>
+    </CustomExtension>
+    </CustomExtensionList>
+    </Track>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/record/tracks/1
+  HTTP 403
+  server: Webs
+  content-length: 299
+  content-type: application/xml; charset="UTF-8"
+  Body (299 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <ResponseStatus version="1.0" xmlns="urn:psialliance-org">
+    <requestURL>/ISAPI/ContentMgmt/record/tracks/1</requestURL>
+    <statusCode>4</statusCode>
+    <statusString>Invalid Operation</statusString>
+    <subStatusCode>invalidOperation</subStatusCode>
+    </ResponseStatus>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/search/capabilities
+  HTTP 404
+  server: Webs
+  content-length: 20
+  content-type: text/html
+  Body (20 bytes):
+    Can't locate the url
+
+────────────────────────────────────────────────────────────
+  GET /PSIA/ContentMgmt/search/capabilities
+  HTTP 404
+  server: Webs
+  content-length: 166
+  content-type: text/html
+  Body (166 bytes):
+    <!DOCTYPE html>
+    <html><head><title>Document Error: Not Found</title></head>
+    <body><h2>Access Error: 404 -- Not Found</h2>
+    <p>Can't open URL</p>
+    </body>
+    </html>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/logSearch
+  HTTP 403
+  server: Webs
+  content-length: 289
+  content-type: application/xml; charset="UTF-8"
+  Body (289 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <ResponseStatus version="1.0" xmlns="urn:psialliance-org">
+    <requestURL>/ISAPI/ContentMgmt/logSearch</requestURL>
+    <statusCode>4</statusCode>
+    <statusString>Invalid Operation</statusString>
+    <subStatusCode>lowPrivilege</subStatusCode>
+    </ResponseStatus>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/search
+  HTTP 400
+  server: Webs
+  content-length: 287
+  content-type: application/xml; charset="UTF-8"
+  Body (287 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <ResponseStatus version="1.0" xmlns="urn:psialliance-org">
+    <requestURL>/ISAPI/ContentMgmt/search</requestURL>
+    <statusCode>5</statusCode>
+    <statusString>Invalid XML Format</statusString>
+    <subStatusCode>badXmlFormat</subStatusCode>
+    </ResponseStatus>
+
+
+────────────────────────────────────────────────────────────
+  GET /PSIA/ContentMgmt/search
+  HTTP 404
+  server: Webs
+  content-length: 166
+  content-type: text/html
+  Body (166 bytes):
+    <!DOCTYPE html>
+    <html><head><title>Document Error: Not Found</title></head>
+    <body><h2>Access Error: 404 -- Not Found</h2>
+    <p>Can't open URL</p>
+    </body>
+    </html>
+
+
+======================================================================
+  PHASE 2: ALTERNATIVE SEARCH API PATHS
+======================================================================
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/search?trackID=101&startTime=2026-05-23T00:00:00Z&endTime=2026-05-23T23:59:59Z
+  HTTP 400
+  server: Webs
+  content-length: 287
+  content-type: application/xml; charset="UTF-8"
+  Body (287 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <ResponseStatus version="1.0" xmlns="urn:psialliance-org">
+    <requestURL>/ISAPI/ContentMgmt/search</requestURL>
+    <statusCode>5</statusCode>
+    <statusString>Invalid XML Format</statusString>
+    <subStatusCode>badXmlFormat</subStatusCode>
+    </ResponseStatus>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/search?channel=1&startTime=2026-05-23T00:00:00Z&endTime=2026-05-23T23:59:59Z
+  HTTP 400
+  server: Webs
+  content-length: 287
+  content-type: application/xml; charset="UTF-8"
+  Body (287 bytes):
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <ResponseStatus version="1.0" xmlns="urn:psialliance-org">
+    <requestURL>/ISAPI/ContentMgmt/search</requestURL>
+    <statusCode>5</statusCode>
+    <statusString>Invalid XML Format</statusString>
+    <subStatusCode>badXmlFormat</subStatusCode>
+    </ResponseStatus>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/record/search
+  HTTP 404
+  server: Webs
+  content-length: 20
+  content-type: text/html
+  Body (20 bytes):
+    Can't locate the url
+
+────────────────────────────────────────────────────────────
+  GET /PSIA/ContentMgmt/record/search
+  HTTP 404
+  server: Webs
+  content-length: 166
+  content-type: text/html
+  Body (166 bytes):
+    <!DOCTYPE html>
+    <html><head><title>Document Error: Not Found</title></head>
+    <body><h2>Access Error: 404 -- Not Found</h2>
+    <p>Can't open URL</p>
+    </body>
+    </html>
+
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/playback
+  HTTP 404
+  server: Webs
+  content-length: 20
+  content-type: text/html
+  Body (20 bytes):
+    Can't locate the url
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/playback/tracks
+  HTTP 404
+  server: Webs
+  content-length: 20
+  content-type: text/html
+  Body (20 bytes):
+    Can't locate the url
+
+────────────────────────────────────────────────────────────
+  GET /ISAPI/ContentMgmt/playback/tracks/101
+  HTTP 404
+  server: Webs
+  content-length: 20
+  content-type: text/html
+  Body (20 bytes):
+    Can't locate the url
+
+======================================================================
+  DONE
+======================================================================
+Review the output above to identify:
+  1. Device model and firmware version (from deviceInfo)
+  2. Available recording tracks (from record/tracks)
+  3. Which endpoints return 200 vs 404 vs 400
+  4. Any alternative search API paths
