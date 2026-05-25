@@ -1,0 +1,85 @@
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light mode defaults */
+  :root {
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --card: #ffffff;
+    --card-foreground: #0a0a0a;
+    --popover: #ffffff;
+    --popover-foreground: #0a0a0a;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --secondary: #f5f5f5;
+    --secondary-foreground: #171717;
+    --muted: #f5f5f5;
+    --muted-foreground: #737373;
+    --accent: #f5f5f5;
+    --accent-foreground: #171717;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #e5e5e5;
+    --input: #e5e5e5;
+    --ring: #a3a3a3;
+    --radius: 0.625rem;
+    --sidebar: #f8fafc;
+    --sidebar-foreground: #0a0a0a;
+    --sidebar-primary: #3b82f6;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f1f5f9;
+    --sidebar-accent-foreground: #0a0a0a;
+    --sidebar-border: #e5e5e5;
+    --sidebar-ring: #a3a3a3;
+  }
+
+  /* Dark mode — matches the template's dark theme exactly */
+  .dark {
+    --background: #0d1117;
+    --foreground: #e2e8f0;
+    --card: #141d2b;
+    --card-foreground: #e2e8f0;
+    --popover: #1a2436;
+    --popover-foreground: #e2e8f0;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --secondary: #1e2a3b;
+    --secondary-foreground: #cbd5e1;
+    --muted: #1a2436;
+    --muted-foreground: #64748b;
+    --accent: #1d3a6e;
+    --accent-foreground: #93c5fd;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: rgba(255, 255, 255, 0.07);
+    --input: #1e2a3b;
+    --ring: #3b82f6;
+    --sidebar: #0f1623;
+    --sidebar-foreground: #e2e8f0;
+    --sidebar-primary: #3b82f6;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #1a2436;
+    --sidebar-accent-foreground: #e2e8f0;
+    --sidebar-border: rgba(255, 255, 255, 0.07);
+    --sidebar-ring: #3b82f6;
+  }
+
+  * {
+    border-color: var(--border);
+    outline-color: var(--ring);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  html {
+    font-family: 'Inter', 'Geist Variable', sans-serif;
+  }
+}

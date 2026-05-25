@@ -1,0 +1,17 @@
+/* Button styles (sanitized) */
+.template-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground, #fff);
+  border: none;
+  cursor: pointer;
+}
+.template-btn.secondary {
+  background: transparent;
+  color: var(--color-foreground);
+  border: 1px solid rgba(255,255,255,0.06);
+}

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 64" fill="none">
+  <g transform="translate(2, 2)">
+    <path d="M24 2 C24 2 20 7 21 12 C22 16 25 18 25 18 C25 18 23 15 24 11 C25 8 28 6 28 6 C28 6 26 11 27 14 C28 17 31 19 31 19 C31 19 29 16 30 12 C31 9 34 7 34 7 C34 7 32 13 33 16 C34 19 37 20 37 20 C37 20 35 17 36 13 C37 10 39 8 39 8 C39 8 38 14 37 17 C36 20 33 22 33 22 L23 22 C23 22 20 20 19 17 C18 14 19 9 21 6 C22 4 24 2 24 2Z" fill="white"/>
+    <path d="M8 25 C8 25 15 23 21 24 L21 46 C21 46 15 45 8 47 Z" fill="white" opacity="0.9"/>
+    <path d="M33 24 C39 23 46 25 46 25 L46 47 C39 45 33 46 33 46 Z" fill="white" opacity="0.9"/>
+    <path d="M21 24 L33 24 L33 46 L21 46 Z" fill="white" opacity="0.75"/>
+    <path d="M8 47 Q27 44 46 47 L46 49 Q27 46 8 49 Z" fill="white" opacity="0.8"/>
+  </g>
+  <text x="58" y="42<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 64" fill="none">
+  <g transform="translate(2, 2)">
+    <path d="M24 2 C24 2 20 7 21 12 C22 16 25 
+EOF

@@ -14,7 +14,9 @@
  */
 
 import React, { useState } from 'react'
-import { playbackApi, getAuthToken } from '../../api'
+import { getAuthToken } from '../../api'
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
 export default function PlaybackDownloadDialog({
   open,
@@ -43,7 +45,7 @@ export default function PlaybackDownloadDialog({
     try {
       // POST to download endpoint — backend streams the file
       const token = getAuthToken()
-      const res = await fetch('/api/v1/playback/download', {
+      const res = await fetch(`${API_BASE}/playback/download`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,0 +1,14 @@
+/* Sidebar variables (sanitized) */
+:root {
+  --sidebar-bg: #0f1623;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-border: rgba(255,255,255,0.07);
+  --sidebar-width: 16rem;
+}
+
+.template-sidebar {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-foreground);
+  width: var(--sidebar-width);
+  border-right: 1px solid var(--sidebar-border);
+}
