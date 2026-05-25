@@ -20,6 +20,10 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_DAYS: 7
 
+      # Path to go2rtc config file (shared volume — backend writes, go2rtc auto-reloads)
+      GO2RTC_CONFIG_PATH: /go2rtc.yaml
+      # go2rtc Docker container name — used to send SIGHUP for config reload
+      GO2RTC_CONTAINER_NAME: cctv_go2rtc
       # go2rtc internal host (Docker service name) for backend proxy calls
       STREAMING_GO2RTC_HOST: go2rtc
       # go2rtc internal API URL — backend calls this directly over Docker network
@@ -29,6 +33,8 @@ services:
 
     volumes:
       - ./backend:/app
+      - ./go2rtc/go2rtc.yaml:/go2rtc.yaml:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
     depends_on:
       - postgres
@@ -60,6 +66,8 @@ services:
       VITE_API_BASE_URL: "/api/v1"
       # go2rtc WebSocket/stream URL — routed via nginx /go2rtc/ prefix
       VITE_GO2RTC_BASE_URL: ""
+      # go2rtc internal target for Vite dev server proxy (Docker service name)
+      VITE_GO2RTC_TARGET: "http://go2rtc:1984"
       # Vite proxy target — Docker service name so the dev server can reach the backend
       VITE_PROXY_TARGET: "http://backend:8000"
 
@@ -114,7 +122,7 @@ services:
       - GO2RTC_API=true
       - GO2RTC_DEBUG=false
     volumes:
-      - ./go2rtc/go2rtc.yaml:/config/go2rtc.yaml:ro
+      - ./go2rtc/go2rtc.yaml:/config/go2rtc.yaml:rw
     ports:
       - "1984:1984" # HTTP API/HLS (direct access for debugging)
     healthcheck:

@@ -239,16 +239,7 @@ export default function PlaybackPlayer({ streamName, sessionId, onClose, title }
     }
   }, [streamName, connect, cleanup, startHeartbeat, stopHeartbeat])
 
-  // Cleanup session on unmount
-  useEffect(() => {
-    return () => {
-      if (sessionId) {
-        playbackApi.deleteSession(sessionId).catch(e =>
-          ERR('Session cleanup failed:', e)
-        )
-      }
-    }
-  }, [sessionId])
+  // Session cleanup is handled by handleClose (explicit) or TTL expiry (navigation away)
 
   const handleClose = useCallback(async () => {
     stopHeartbeat()

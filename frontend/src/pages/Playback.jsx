@@ -24,13 +24,15 @@ import PlaybackDownloadDialog from '../components/playback/PlaybackDownloadDialo
 const LOG = (...args) => console.log('[Playback]', ...args)
 const ERR = (...args) => console.error('[Playback]', ...args)
 
-// Build start/end Date from a date + time string (HH:MM)
-function buildDateTime(date, timeStr) {
+const TZ_OFFSET = { WIB: 7, WITA: 8, WIT: 9 }
+
+// Build a UTC Date from a local date + time string (HH:MM) in the NVR's timezone.
+function buildDateTime(date, timeStr, tzOffset = 7) {
   if (!date || !timeStr) return null
   const [h, m] = timeStr.split(':').map(Number)
-  const dt = new Date(date)
-  dt.setHours(h, m, 0, 0)
-  return dt
+  const d = new Date(date)
+  // Date.UTC handles negative hours correctly (wraps to previous day).
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), h - tzOffset, m, 0, 0))
 }
 
 export default function Playback() {
@@ -66,6 +68,8 @@ export default function Playback() {
       .catch(e => ERR('Failed to load NVRs:', e))
   }, [])
 
+  const tzOffset = TZ_OFFSET[selectedNvr?.timezone] ?? 7
+
   // Search recordings
   const handleSearch = useCallback(async () => {
     if (!selectedNvr || !selectedDate) return
@@ -75,8 +79,8 @@ export default function Playback() {
     setTimelineBlocks([])
     setSession(null)
 
-    const start = buildDateTime(selectedDate, startTimeStr)
-    const end = buildDateTime(selectedDate, endTimeStr)
+    const start = buildDateTime(selectedDate, startTimeStr, tzOffset)
+    const end = buildDateTime(selectedDate, endTimeStr, tzOffset)
     if (!start || !end || end <= start) {
       setSearchError('Invalid time range')
       setSearchLoading(false)
@@ -109,8 +113,8 @@ export default function Playback() {
     setSessionLoading(true)
     setSessionError('')
 
-    const start = buildDateTime(selectedDate, startTimeStr)
-    const end = buildDateTime(selectedDate, endTimeStr)
+    const start = buildDateTime(selectedDate, startTimeStr, tzOffset)
+    const end = buildDateTime(selectedDate, endTimeStr, tzOffset)
 
     try {
       const data = await playbackApi.createSession(
@@ -172,6 +176,7 @@ export default function Playback() {
               onPlay={handlePlay}
               loading={searchLoading || sessionLoading}
               hasResults={hasResults}
+              timezone={selectedNvr?.timezone || 'WIB'}
             />
           </div>
 
@@ -294,8 +299,8 @@ export default function Playback() {
         onClose={() => setDownloadOpen(false)}
         deviceId={selectedNvr?.id}
         channel={channel}
-        startTime={buildDateTime(selectedDate, startTimeStr)}
-        endTime={buildDateTime(selectedDate, endTimeStr)}
+        startTime={buildDateTime(selectedDate, startTimeStr, tzOffset)}
+        endTime={buildDateTime(selectedDate, endTimeStr, tzOffset)}
         deviceName={selectedNvr?.device_name || selectedNvr?.nvr_ip}
       />
     </div>

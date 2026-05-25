@@ -35,6 +35,7 @@ export default function PlaybackControls({
   onPlay,
   loading = false,
   hasResults = false,
+  timezone = 'WIB',
 }) {
   return (
     <div style={styles.container}>
@@ -73,7 +74,7 @@ export default function PlaybackControls({
 
       {/* Time range */}
       <div style={styles.field}>
-        <label style={styles.label}>From</label>
+        <label style={styles.label}>From ({timezone})</label>
         <input
           type="time"
           value={startTime}
@@ -83,7 +84,7 @@ export default function PlaybackControls({
       </div>
 
       <div style={styles.field}>
-        <label style={styles.label}>To</label>
+        <label style={styles.label}>To ({timezone})</label>
         <input
           type="time"
           value={endTime}

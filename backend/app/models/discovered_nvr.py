@@ -79,6 +79,11 @@ class DiscoveredNVR(Base):
     username = Column(String(100), nullable=False)
     password = Column(String(255), nullable=False)
 
+    # Timezone of the NVR's physical location. Used to interpret user-entered
+    # local times correctly when building RTSP playback queries.
+    # Values: "WIB" (UTC+7), "WITA" (UTC+8), "WIT" (UTC+9)
+    timezone = Column(String(10), nullable=False, default="WIB")
+
     # ---- device info (from ISAPI) ----
 
     device_name = Column(String(255), nullable=True)

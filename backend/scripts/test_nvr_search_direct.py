@@ -270,7 +270,7 @@ async def run(args):
         test_nums = [test_num]
 
     print(f"\nTarget: {url}")
-    print(f"Timestamps: {START_Z} → {END_Z}")
+    print(f"Timestamps: {START_Z} -> {END_Z}")
     print("=" * 70)
 
     for tn in test_nums:
@@ -323,7 +323,7 @@ async def run(args):
 
             if resp.is_success:
                 print(f"\n{'=' * 70}")
-                print(f"  ✅ SUCCESS!")
+                print(f"  SUCCESS!")
                 print(f"  Full response:\n{resp.text}")
                 print(f"{'=' * 70}")
             else:

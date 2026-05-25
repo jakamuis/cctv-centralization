@@ -18,6 +18,12 @@ export default defineConfig({
         target: process.env.VITE_PROXY_TARGET || 'http://backend:8000',
         changeOrigin: true,
       },
+      '/go2rtc': {
+        target: process.env.VITE_GO2RTC_TARGET || 'http://go2rtc:1984',
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/go2rtc/, ''),
+      },
     },
   }
 })

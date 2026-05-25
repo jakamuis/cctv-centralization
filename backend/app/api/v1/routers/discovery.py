@@ -321,6 +321,7 @@ def _nvr_to_dict(nvr) -> dict:
         "mac_address": nvr.mac_address,
         "firmware_version": nvr.firmware_version,
         "device_type": nvr.device_type,
+        "timezone": nvr.timezone,
         "sync_status": nvr.sync_status,
         "sync_error": nvr.sync_error,
         "last_synced_at": nvr.last_synced_at.isoformat() if nvr.last_synced_at else None,

@@ -30,10 +30,13 @@ The searchType element is critical — V3.x firmware often requires it.
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import logging
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote
 
@@ -852,6 +855,10 @@ def _parse_device_info(root: ET.Element, caps: NVRCapabilities) -> None:
 # ISAPI response helpers
 # ---------------------------------------------------------------------------
 
+class _EarlyRtspFallback(Exception):
+    """Raised internally to break out of the ISAPI loop and go straight to RTSP probe."""
+
+
 def _is_bad_xml(status_code: int, body: str) -> bool:
     if status_code != 400:
         return False
@@ -951,6 +958,166 @@ async def _post_search(
 
 
 # ---------------------------------------------------------------------------
+# RTSP probe fallback
+# Used when the NVR firmware rejects all ISAPI search XML formats.
+# Probes time windows via RTSP DESCRIBE to detect recording presence.
+# Confirmed working on DS-7616NI-Q1 V3.4.104 where ISAPI search is broken.
+# ---------------------------------------------------------------------------
+
+async def _probe_rtsp_segment(
+    rtsp_host: str,
+    rtsp_port: int,
+    username: str,
+    password: str,
+    track_id: int,
+    start: datetime,
+    end: datetime,
+) -> bool:
+    """Return True if RTSP DESCRIBE confirms a recording exists for this window."""
+    start_str = _format_rtsp_dt(start)
+    end_str   = _format_rtsp_dt(end)
+    uri       = f"/Streaming/tracks/{track_id}?starttime={start_str}&endtime={end_str}"
+    rtsp_url  = f"rtsp://{rtsp_host}:{rtsp_port}{uri}"
+
+    async def _recv_headers(reader: asyncio.StreamReader) -> str:
+        data = b""
+        while b"\r\n\r\n" not in data:
+            chunk = await asyncio.wait_for(reader.read(4096), timeout=8.0)
+            if not chunk:
+                break
+            data += chunk
+        return data.decode(errors="replace")
+
+    try:
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(rtsp_host, rtsp_port), timeout=8.0
+        )
+        try:
+            req = (
+                f"DESCRIBE {rtsp_url} RTSP/1.0\r\n"
+                f"CSeq: 1\r\nAccept: application/sdp\r\n\r\n"
+            )
+            writer.write(req.encode())
+            await writer.drain()
+            resp = await _recv_headers(reader)
+
+            if "200 OK" in resp:
+                return True
+
+            if "401" in resp:
+                realm_m = re.search(r'realm="([^"]+)"', resp)
+                nonce_m = re.search(r'nonce="([^"]+)"', resp)
+                if realm_m and nonce_m:
+                    ha1 = hashlib.md5(
+                        f"{username}:{realm_m.group(1)}:{password}".encode()
+                    ).hexdigest()
+                    ha2 = hashlib.md5(f"DESCRIBE:{uri}".encode()).hexdigest()
+                    digest_resp = hashlib.md5(
+                        f"{ha1}:{nonce_m.group(1)}:{ha2}".encode()
+                    ).hexdigest()
+                    auth = (
+                        f'Digest username="{username}", '
+                        f'realm="{realm_m.group(1)}", '
+                        f'nonce="{nonce_m.group(1)}", '
+                        f'uri="{uri}", response="{digest_resp}"'
+                    )
+                    req2 = (
+                        f"DESCRIBE {rtsp_url} RTSP/1.0\r\n"
+                        f"CSeq: 2\r\nAccept: application/sdp\r\n"
+                        f"Authorization: {auth}\r\n\r\n"
+                    )
+                    writer.write(req2.encode())
+                    await writer.drain()
+                    resp2 = await _recv_headers(reader)
+                    return "200 OK" in resp2
+        finally:
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
+    except Exception as exc:
+        logger.debug("[RTSP probe] %s: %s", uri, exc)
+
+    return False
+
+
+def _merge_segments(segments: List[RecordingSegment]) -> List[RecordingSegment]:
+    """Merge adjacent recording segments produced by the RTSP probe."""
+    if not segments:
+        return []
+    merged = [segments[0]]
+    for seg in segments[1:]:
+        last = merged[-1]
+        if seg.start <= last.end:
+            merged[-1] = RecordingSegment(
+                start=last.start,
+                end=max(last.end, seg.end),
+                track_id=last.track_id,
+                recording_type=last.recording_type,
+            )
+        else:
+            merged.append(seg)
+    return merged
+
+
+async def _search_via_rtsp_probe(
+    nvr_ip: str,
+    rtsp_port: int,
+    username: str,
+    password: str,
+    channel: int,
+    start_time: datetime,
+    end_time: datetime,
+) -> List[RecordingSegment]:
+    """
+    Probe RTSP DESCRIBE for recording presence when ISAPI search is unsupported.
+
+    Divides the requested window into probe intervals and checks each one.
+    Returns coarse RecordingSegment objects suitable for timeline display.
+    """
+    track_id = channel_to_track_id(channel)
+    total_secs = (end_time - start_time).total_seconds()
+
+    if total_secs <= 3600:
+        interval = timedelta(minutes=15)
+    elif total_secs <= 14400:
+        interval = timedelta(minutes=30)
+    else:
+        interval = timedelta(hours=1)
+
+    logger.info(
+        "[RTSP probe] ch=%d track=%d  %s -> %s  interval=%s",
+        channel, track_id,
+        _format_isapi_dt_utc_z(start_time),
+        _format_isapi_dt_utc_z(end_time),
+        interval,
+    )
+
+    segments: List[RecordingSegment] = []
+    current = start_time
+    while current < end_time:
+        probe_end = min(current + interval, end_time)
+        if await _probe_rtsp_segment(
+            nvr_ip, rtsp_port, username, password, track_id, current, probe_end
+        ):
+            segments.append(RecordingSegment(
+                start=current,
+                end=probe_end,
+                track_id=str(track_id),
+                recording_type="normal",
+            ))
+        current = probe_end
+
+    merged = _merge_segments(segments)
+    logger.info(
+        "[RTSP probe] ch=%d  found %d segment(s)  (from %d probes)",
+        channel, len(merged), int(total_secs / interval.total_seconds()),
+    )
+    return merged
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -963,6 +1130,7 @@ async def search_recordings(
     start_time: datetime,
     end_time: datetime,
     use_https: bool = False,
+    rtsp_port: int = 554,
 ) -> List[RecordingSegment]:
     """
     Search for recording segments on a Hikvision NVR via ISAPI.
@@ -1028,6 +1196,7 @@ async def search_recordings(
 
     last_error: Optional[str] = None
     attempts = 0
+    bad_xml_count = 0
 
     try:
         async with httpx.AsyncClient(
@@ -1119,6 +1288,17 @@ async def search_recordings(
                                         xml_body[:300], body[:300],
                                     )
                                     last_error = f"[{label}] badXml: {body[:150]}"
+                                    bad_xml_count += 1
+                                    # Early exit: firmware clearly rejects all XML —
+                                    # skip remaining combos and go straight to RTSP probe.
+                                    if bad_xml_count >= 5:
+                                        logger.warning(
+                                            "%d consecutive badXmlContent responses — "
+                                            "firmware does not support ISAPI search. "
+                                            "Aborting remaining combos, falling back to RTSP probe.",
+                                            bad_xml_count,
+                                        )
+                                        raise _EarlyRtspFallback()
                                     continue
 
                                 # Other 4xx/5xx — try next
@@ -1152,18 +1332,41 @@ async def search_recordings(
                                 )
                                 return segments
 
+    except _EarlyRtspFallback:
+        pass  # handled below — fall through to RTSP probe
     except PlaybackSearchError:
         raise
     except Exception as exc:
         raise PlaybackSearchError(
             f"Unexpected error searching {nvr_ip}:{http_port}: {exc}"
         ) from exc
+    else:
+        # Normal exhaustion path: only fall back if every attempt was badXml.
+        if not (bad_xml_count > 0 and bad_xml_count == attempts):
+            raise PlaybackSearchError(
+                f"All {attempts} combinations rejected by {nvr_ip}:{http_port}. "
+                f"Last error: {last_error}"
+            )
 
-    # All combinations exhausted
-    raise PlaybackSearchError(
-        f"All {attempts} combinations rejected by {nvr_ip}:{http_port}. "
-        f"Last error: {last_error}"
-    )
+    # All combinations returned badXmlContent (or early-exit triggered).
+    # The firmware has a broken ISAPI search parser (confirmed DS-7616NI-Q1 V3.4.104).
+    # Fall back to RTSP DESCRIBE probing to build a coarse recording timeline.
+    if bad_xml_count > 0:
+        logger.warning(
+            "All %d ISAPI search attempts returned badXmlContent — "
+            "firmware does not support ISAPI search. "
+            "Falling back to RTSP probe for ch=%d on %s:%d.",
+            attempts, channel, nvr_ip, rtsp_port,
+        )
+        try:
+            return await _search_via_rtsp_probe(
+                nvr_ip, rtsp_port, username, password, channel, start_time, end_time,
+            )
+        except Exception as exc:
+            logger.error("RTSP probe fallback failed: %s", exc)
+            raise PlaybackSearchError(
+                f"ISAPI search unsupported and RTSP probe failed: {exc}"
+            ) from exc
 
 
 def build_playback_rtsp_url(

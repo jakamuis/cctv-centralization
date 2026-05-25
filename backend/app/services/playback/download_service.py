@@ -119,16 +119,25 @@ async def stream_recording_download(
     if end_time.tzinfo is None:
         end_time = end_time.replace(tzinfo=timezone.utc)
 
-    download_url = build_download_url(
-        nvr_ip=nvr.nvr_ip,
-        http_port=nvr.http_port,
-        channel=channel,
-        start_time=start_time,
-        end_time=end_time,
+    track_id = channel_to_track_id(channel)
+    start_str = _format_rtsp_dt(start_time)
+    end_str = _format_rtsp_dt(end_time)
+    playback_uri = (
+        f"rtsp://{nvr.nvr_ip}/Streaming/tracks/{track_id}"
+        f"?starttime={start_str}&endtime={end_str}"
+    )
+    download_url = (
+        f"http://{nvr.nvr_ip}:{nvr.http_port}/ISAPI/ContentMgmt/download"
+    )
+    # & in the RTSP query string must be escaped as &amp; inside XML
+    playback_uri_xml = playback_uri.replace("&", "&amp;")
+    xml_body = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f'<downloadRequest><playbackURI>{playback_uri_xml}</playbackURI></downloadRequest>'
     )
 
     logger.info(
-        "Starting recording download: NVR=%s ch=%d %s → %s",
+        "Starting recording download: NVR=%s ch=%d %s to %s",
         nvr.nvr_ip, channel,
         start_time.isoformat(), end_time.isoformat(),
     )
@@ -145,7 +154,11 @@ async def stream_recording_download(
             verify=False,
             follow_redirects=True,
         ) as client:
-            async with client.stream("GET", download_url) as response:
+            async with client.stream(
+                "POST", download_url,
+                content=xml_body.encode(),
+                headers={"Content-Type": "application/xml"},
+            ) as response:
                 if response.status_code in (401, 403):
                     raise DownloadError(
                         f"Authentication failed for download from {nvr.nvr_ip} "

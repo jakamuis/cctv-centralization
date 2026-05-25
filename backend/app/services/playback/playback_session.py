@@ -56,12 +56,16 @@ async def create_session(
     now = datetime.now(tz=timezone.utc)
     expires_at = now + timedelta(seconds=ttl_seconds)
 
+    # start_time/end_time columns are TIMESTAMP WITHOUT TIME ZONE — strip tzinfo
+    start_time_naive = start_time.replace(tzinfo=None) if start_time.tzinfo else start_time
+    end_time_naive = end_time.replace(tzinfo=None) if end_time.tzinfo else end_time
+
     session = PlaybackSession(
         id=uuid.uuid4(),
         device_id=device_id,
         channel=channel,
-        start_time=start_time,
-        end_time=end_time,
+        start_time=start_time_naive,
+        end_time=end_time_naive,
         stream_name=stream_name,
         expires_at=expires_at,
         created_by=created_by,
