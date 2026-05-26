@@ -45,10 +45,11 @@ class CsvDeviceRow(BaseModel):
     password: Optional[str] = None
     enabled: Optional[str] = None
     notes: Optional[str] = None
+    vendor: Optional[str] = None   # "hikvision" (default) | "acti_snvr"
 
     # ---- field-level cleaners ----
 
-    @field_validator("site_code", "branch_name", "nvr_ip", "username", "notes", mode="before")
+    @field_validator("site_code", "branch_name", "nvr_ip", "username", "notes", "vendor", mode="before")
     @classmethod
     def strip_whitespace(cls, v):
         if isinstance(v, str):
@@ -99,6 +100,13 @@ class CsvDeviceRow(BaseModel):
             return int(self.rtsp_port) if self.rtsp_port else 554
         except ValueError:
             return 554
+
+    @property
+    def vendor_str(self) -> str:
+        """Normalised vendor string — defaults to 'hikvision' when blank."""
+        if self.vendor:
+            return self.vendor.lower().strip()
+        return "hikvision"
 
     def is_valid_for_sync(self) -> tuple[bool, str]:
         """
@@ -158,6 +166,41 @@ class HikvisionChannel(BaseModel):
     ip_address: Optional[str] = None         # camera IP
     manage_port: Optional[int] = None        # camera HTTP port
     protocol: Optional[str] = None           # "HIKVISION", "ONVIF", etc.
+    enabled: bool = True
+
+
+# ---------------------------------------------------------------------------
+# ACTi SNVR device info — returned by connectivity probe
+# ---------------------------------------------------------------------------
+
+class ActiDeviceInfo(BaseModel):
+    """
+    Minimal device info for an ACTi SNVR.
+    The SNVR has no machine-readable device-info API so we synthesise this.
+    """
+
+    device_name: Optional[str] = None
+    device_type: str = "NVR"
+    vendor: str = "acti_snvr"
+    # These are None because the SNVR CGI API does not expose them
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    mac_address: Optional[str] = None
+    firmware_version: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# ACTi SNVR channel — one entry from channel enumeration probe
+# ---------------------------------------------------------------------------
+
+class ActiChannel(BaseModel):
+    """
+    Represents a single camera channel on an ACTi SNVR.
+    Discovered by probing /virtualcamera/channelN?media&streamid=0.
+    """
+
+    channel_id: str          # "1", "2", …
+    channel_name: str        # "Channel 1", "Channel 2", …  (no name API)
     enabled: bool = True
 
 

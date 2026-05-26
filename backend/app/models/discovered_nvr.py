@@ -84,6 +84,10 @@ class DiscoveredNVR(Base):
     # Values: "WIB" (UTC+7), "WITA" (UTC+8), "WIT" (UTC+9)
     timezone = Column(String(10), nullable=False, default="WIB")
 
+    # NVR vendor / protocol family.
+    # Values: "hikvision" (ISAPI over RTSP) | "acti_snvr" (HTTP multipart/H264)
+    vendor = Column(String(50), nullable=False, default="hikvision")
+
     # ---- device info (from ISAPI) ----
 
     device_name = Column(String(255), nullable=True)

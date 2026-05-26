@@ -45,13 +45,14 @@ from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
 # from app.api.v1.dependencies import get_current_user  # TEMP: disabled for local testing
 from app.db.session import get_db
-from app.discovery.sync_engine import run_sync
-from app.discovery.schemas import SyncResponse
+from app.discovery.sync_engine import run_sync, _sync_single_device
+from app.discovery.schemas import SyncResponse, CsvDeviceRow, DeviceSyncResult
 # from app.models.user import User  # TEMP: not needed without auth
 from app.repositories.discovery import DiscoveryRepository
 from app.core.config import settings
@@ -128,6 +129,57 @@ async def trigger_sync(
     )
 
     return response
+
+
+# ---------------------------------------------------------------------------
+# POST /discovery/sync/device  — sync a single device without the CSV
+# ---------------------------------------------------------------------------
+
+class SyncDeviceRequest(BaseModel):
+    site_code: str
+    branch_name: str = ""
+    nvr_ip: str
+    http_port: int = 80
+    rtsp_port: int = 554
+    username: str
+    password: str
+    vendor: str = "hikvision"   # "hikvision" | "acti_snvr"
+    enabled: str = "true"
+    notes: str = ""
+
+
+@router.post(
+    "/sync/device",
+    response_model=DeviceSyncResult,
+    summary="Sync a single NVR device directly (no Google Sheet needed)",
+    status_code=status.HTTP_200_OK,
+)
+async def sync_single_device(
+    body: SyncDeviceRequest,
+    db: AsyncSession = Depends(get_db),
+) -> DeviceSyncResult:
+    """
+    Probe and register a single NVR directly — useful for testing without
+    editing the Google Sheet.
+
+    For ACTi SNVR set **vendor = acti_snvr** and **http_port = 80**.
+    For Hikvision leave vendor blank or set **vendor = hikvision**.
+    """
+    row = CsvDeviceRow(
+        site_code=body.site_code,
+        branch_name=body.branch_name,
+        nvr_ip=body.nvr_ip,
+        http_port=str(body.http_port),
+        rtsp_port=str(body.rtsp_port),
+        username=body.username,
+        password=body.password,
+        vendor=body.vendor,
+        enabled=body.enabled,
+        notes=body.notes,
+    )
+
+    result = await _sync_single_device(db, row)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -322,6 +374,7 @@ def _nvr_to_dict(nvr) -> dict:
         "firmware_version": nvr.firmware_version,
         "device_type": nvr.device_type,
         "timezone": nvr.timezone,
+        "vendor": getattr(nvr, "vendor", "hikvision"),
         "sync_status": nvr.sync_status,
         "sync_error": nvr.sync_error,
         "last_synced_at": nvr.last_synced_at.isoformat() if nvr.last_synced_at else None,

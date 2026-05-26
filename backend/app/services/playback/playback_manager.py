@@ -35,6 +35,7 @@ from app.core.config import settings
 from app.models.discovered_nvr import DiscoveredNVR
 from app.models.playback_session import PlaybackSession
 from app.services.playback.hikvision_playback import build_playback_rtsp_url
+from app.services.playback.acti_playback import build_playback_http_url as acti_build_playback_url
 from app.services.playback.playback_session import (
     create_session,
     delete_session,
@@ -229,19 +230,31 @@ async def create_playback_session(
 
     stream_name = _build_stream_name(nvr.id, channel, start_time)
 
-    # Build the authenticated RTSP URL — never sent to frontend
-    rtsp_url = build_playback_rtsp_url(
-        nvr_ip=nvr.nvr_ip,
-        rtsp_port=nvr.rtsp_port,
-        username=nvr.username,
-        password=nvr.password,
-        channel=channel,
-        start_time=start_time,
-        end_time=end_time,
-    )
+    # Build the authenticated stream URL — never sent to frontend.
+    # ACTi SNVRs use HTTP multipart/H264 via FFmpeg; Hikvision uses RTSP.
+    vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
+    if vendor == "acti_snvr":
+        stream_url = acti_build_playback_url(
+            nvr_ip=nvr.nvr_ip,
+            http_port=nvr.http_port,
+            username=nvr.username,
+            password=nvr.password,
+            channel=channel,
+            start_time=start_time,
+        )
+    else:
+        stream_url = build_playback_rtsp_url(
+            nvr_ip=nvr.nvr_ip,
+            rtsp_port=nvr.rtsp_port,
+            username=nvr.username,
+            password=nvr.password,
+            channel=channel,
+            start_time=start_time,
+            end_time=end_time,
+        )
 
     # Register in go2rtc config file
-    await _register_go2rtc_stream(stream_name, rtsp_url)
+    await _register_go2rtc_stream(stream_name, stream_url)
 
     # Persist session
     try:

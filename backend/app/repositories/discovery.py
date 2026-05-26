@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.discovered_nvr import DiscoveredNVR
 from app.models.nvr_channel import NVRChannel
-from app.discovery.schemas import HikvisionDeviceInfo, HikvisionChannel
+from app.discovery.schemas import HikvisionDeviceInfo, HikvisionChannel, ActiDeviceInfo, ActiChannel
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +59,10 @@ class DiscoveryRepository:
         rtsp_port: int,
         username: str,
         password: str,
-        device_info: Optional[HikvisionDeviceInfo],
+        device_info: Optional[HikvisionDeviceInfo | ActiDeviceInfo],
         sync_status: str,
         sync_error: Optional[str] = None,
+        vendor: str = "hikvision",
     ) -> DiscoveredNVR:
         """
         Insert or update a DiscoveredNVR row.
@@ -83,6 +84,7 @@ class DiscoveryRepository:
             "rtsp_port": rtsp_port,
             "username": username,
             "password": password,
+            "vendor": vendor,
             "sync_status": sync_status,
             "sync_error": sync_error,
             "last_synced_at": now,
@@ -173,7 +175,7 @@ class DiscoveryRepository:
     async def replace_channels(
         self,
         nvr_id: UUID,
-        channels: List[HikvisionChannel],
+        channels: List[HikvisionChannel | ActiChannel],
     ) -> int:
         """
         Replace all channels for an NVR atomically.
@@ -205,9 +207,9 @@ class DiscoveryRepository:
                 "nvr_id": nvr_id,
                 "channel_id": ch.channel_id,
                 "channel_name": ch.channel_name,
-                "ip_address": ch.ip_address,
-                "manage_port": ch.manage_port,
-                "protocol": ch.protocol,
+                "ip_address": getattr(ch, "ip_address", None),
+                "manage_port": getattr(ch, "manage_port", None),
+                "protocol": getattr(ch, "protocol", "ACTI_SNVR"),
                 "is_enabled": ch.enabled,
             }
             for ch in channels

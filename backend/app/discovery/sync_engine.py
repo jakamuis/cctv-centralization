@@ -52,10 +52,17 @@ from app.discovery.isapi_client import (
     ISAPIConnectionError,
     ISAPIResponseError,
 )
+from app.discovery.acti_client import (
+    ActiSNVRClient,
+    ActiAuthError,
+    ActiConnectionError,
+    ActiResponseError,
+)
 from app.discovery.schemas import (
     CsvDeviceRow,
     DeviceSyncResult,
     HikvisionDeviceInfo,
+    ActiDeviceInfo,
     SyncResponse,
 )
 from app.repositories.discovery import DiscoveryRepository
@@ -204,73 +211,115 @@ async def _sync_single_device(
         )
 
     # ------------------------------------------------------------------
-    # Step B: ISAPI connectivity + device info
+    # Step B: vendor-specific connectivity + device info
     # ------------------------------------------------------------------
 
-    device_info: Optional[HikvisionDeviceInfo] = None
+    device_info = None
     channels = []
     sync_status = "failed"
     sync_error: Optional[str] = None
 
-    try:
-        async with HikvisionISAPIClient(
-            ip=row.nvr_ip,          # type: ignore[arg-type]
-            port=http_port,
-            username=row.username,  # type: ignore[arg-type]
-            password=row.password,  # type: ignore[arg-type]
-        ) as client:
+    if row.vendor_str == "acti_snvr":
+        try:
+            async with ActiSNVRClient(
+                ip=row.nvr_ip,          # type: ignore[arg-type]
+                port=http_port,
+                username=row.username,  # type: ignore[arg-type]
+                password=row.password,  # type: ignore[arg-type]
+            ) as client:
 
-            # --- device info (also serves as connectivity probe) ---
-            logger.debug("Fetching deviceInfo for %s:%d", nvr_ip, http_port)
-            device_info = await client.get_device_info()
-            logger.info(
-                "Device info OK: site=%s ip=%s model=%s serial=%s firmware=%s",
-                site_code, nvr_ip,
-                device_info.model,
-                device_info.serial_number,
-                device_info.firmware_version,
-            )
-
-            # --- IP channels (NVR) ---
-            logger.debug("Fetching IP channels for %s:%d", nvr_ip, http_port)
-            channels = await client.get_ip_channels()
-
-            # --- Fallback: analog channels (DVR / encoder) ---
-            if not channels:
-                logger.debug(
-                    "No IP channels found for %s:%d, trying analog channels",
-                    nvr_ip, http_port,
+                logger.debug("Probing ACTi SNVR for %s:%d", nvr_ip, http_port)
+                device_info = await client.get_device_info()
+                logger.info(
+                    "ACTi device OK: site=%s ip=%s",
+                    site_code, nvr_ip,
                 )
-                channels = await client.get_analog_channels()
 
-            logger.info(
-                "Channels found: site=%s ip=%s count=%d",
-                site_code, nvr_ip, len(channels),
+                channels = await client.get_channels()
+                logger.info(
+                    "ACTi channels found: site=%s ip=%s count=%d",
+                    site_code, nvr_ip, len(channels),
+                )
+                sync_status = "synced"
+
+        except ActiConnectionError as exc:
+            sync_status = "unreachable"
+            sync_error = str(exc)
+            logger.warning("ACTi unreachable: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+
+        except ActiAuthError as exc:
+            sync_status = "auth_error"
+            sync_error = str(exc)
+            logger.warning("ACTi auth failed: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+
+        except ActiResponseError as exc:
+            sync_status = "failed"
+            sync_error = str(exc)
+            logger.error("ACTi response error: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+
+        except Exception as exc:  # noqa: BLE001
+            sync_status = "failed"
+            sync_error = f"{type(exc).__name__}: {exc}"
+            logger.exception(
+                "Unexpected error syncing ACTi site=%s ip=%s", site_code, nvr_ip
             )
 
-            sync_status = "synced"
+    else:
+        # Default: Hikvision ISAPI
+        try:
+            async with HikvisionISAPIClient(
+                ip=row.nvr_ip,          # type: ignore[arg-type]
+                port=http_port,
+                username=row.username,  # type: ignore[arg-type]
+                password=row.password,  # type: ignore[arg-type]
+            ) as client:
 
-    except ISAPIConnectionError as exc:
-        sync_status = "unreachable"
-        sync_error = str(exc)
-        logger.warning("Device unreachable: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+                logger.debug("Fetching deviceInfo for %s:%d", nvr_ip, http_port)
+                device_info = await client.get_device_info()
+                logger.info(
+                    "Device info OK: site=%s ip=%s model=%s serial=%s firmware=%s",
+                    site_code, nvr_ip,
+                    device_info.model,
+                    device_info.serial_number,
+                    device_info.firmware_version,
+                )
 
-    except ISAPIAuthError as exc:
-        sync_status = "auth_error"
-        sync_error = str(exc)
-        logger.warning("Auth failed: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+                channels = await client.get_ip_channels()
 
-    except ISAPIResponseError as exc:
-        sync_status = "failed"
-        sync_error = str(exc)
-        logger.error("ISAPI error: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+                if not channels:
+                    logger.debug(
+                        "No IP channels found for %s:%d, trying analog channels",
+                        nvr_ip, http_port,
+                    )
+                    channels = await client.get_analog_channels()
 
-    except Exception as exc:  # noqa: BLE001
-        sync_status = "failed"
-        sync_error = f"{type(exc).__name__}: {exc}"
-        logger.exception(
-            "Unexpected error syncing site=%s ip=%s", site_code, nvr_ip
-        )
+                logger.info(
+                    "Channels found: site=%s ip=%s count=%d",
+                    site_code, nvr_ip, len(channels),
+                )
+                sync_status = "synced"
+
+        except ISAPIConnectionError as exc:
+            sync_status = "unreachable"
+            sync_error = str(exc)
+            logger.warning("Device unreachable: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+
+        except ISAPIAuthError as exc:
+            sync_status = "auth_error"
+            sync_error = str(exc)
+            logger.warning("Auth failed: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+
+        except ISAPIResponseError as exc:
+            sync_status = "failed"
+            sync_error = str(exc)
+            logger.error("ISAPI error: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+
+        except Exception as exc:  # noqa: BLE001
+            sync_status = "failed"
+            sync_error = f"{type(exc).__name__}: {exc}"
+            logger.exception(
+                "Unexpected error syncing site=%s ip=%s", site_code, nvr_ip
+            )
 
     # ------------------------------------------------------------------
     # Step C: Persist to database (even on failure, to record the status)
@@ -292,6 +341,7 @@ async def _sync_single_device(
             device_info=device_info,
             sync_status=sync_status,
             sync_error=sync_error,
+            vendor=row.vendor_str,
         )
 
         if sync_status == "synced" and channels:
@@ -329,8 +379,8 @@ async def _sync_single_device(
         status=sync_status,
         reason=sync_error,
         device_name=device_info.device_name if device_info else None,
-        model=device_info.model if device_info else None,
-        serial_number=device_info.serial_number if device_info else None,
+        model=getattr(device_info, "model", None) if device_info else None,
+        serial_number=getattr(device_info, "serial_number", None) if device_info else None,
         channels_found=len(channels),
         channels_saved=channels_saved,
     )
