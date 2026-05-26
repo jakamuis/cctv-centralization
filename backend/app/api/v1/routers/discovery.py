@@ -321,17 +321,22 @@ async def start_channel_stream(
 
     vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
     if vendor == "acti_snvr":
-        # ACTi SNVR uses channel-number-only path (no *01 suffix)
-        rtsp_path = f"/Streaming/Channels/{channel_id}"
+        # ACTi SNVR has no RTSP — streams H264 over HTTP multipart.
+        # go2rtc ingests it via its FFmpeg source wrapper.
+        http_port = nvr.http_port or 80
+        rtsp_url = (
+            f"ffmpeg:http://{encoded_user}:{encoded_pass}"
+            f"@{nvr.nvr_ip}:{http_port}"
+            f"/virtualcamera/channel{channel_id}?media&streamid=0"
+            f"#video=h264"
+        )
     else:
-        # Hikvision: channel N → path /Streaming/Channels/N01
-        rtsp_path = f"/Streaming/Channels/{channel_id}01"
-
-    rtsp_url = (
-        f"rtsp://{encoded_user}:{encoded_pass}"
-        f"@{nvr.nvr_ip}:{nvr.rtsp_port}"
-        f"{rtsp_path}"
-    )
+        # Hikvision: channel N → RTSP path /Streaming/Channels/N01
+        rtsp_url = (
+            f"rtsp://{encoded_user}:{encoded_pass}"
+            f"@{nvr.nvr_ip}:{nvr.rtsp_port}"
+            f"/Streaming/Channels/{channel_id}01"
+        )
 
     # Deterministic stream name: site_code + channel_id (safe for go2rtc key)
     stream_name = f"{nvr.site_code.lower()}_{channel_id}"

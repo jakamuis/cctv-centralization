@@ -77,14 +77,14 @@ streams:
   mdn-01_12:
     - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1201#transport=tcp"
 
-  # --- PIER-01 (SIG PIER, 192.168.15.200, ACTi SNVR, remote VPN — TCP transport required) ---
+  # --- PIER-01 (SIG PIER, 192.168.15.200, ACTi SNVR — no RTSP, uses HTTP multipart/H264 via FFmpeg) ---
   pier-01_1:
-    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/1#transport=tcp"
+    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel1?media&streamid=0#video=h264"
   pier-01_2:
-    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/2#transport=tcp"
+    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel2?media&streamid=0#video=h264"
   pier-01_3:
-    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/3#transport=tcp"
+    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel3?media&streamid=0#video=h264"
   pier-01_4:
-    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/4#transport=tcp"
+    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel4?media&streamid=0#video=h264"
   pier-01_5:
-    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/5#transport=tcp"
+    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel5?media&streamid=0#video=h264"
