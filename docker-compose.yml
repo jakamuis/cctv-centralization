@@ -123,6 +123,7 @@ services:
       - GO2RTC_DEBUG=false
     volumes:
       - ./go2rtc/go2rtc.yaml:/config/go2rtc.yaml:rw
+      - ./go2rtc/scripts:/scripts:ro
     ports:
       - "1984:1984" # HTTP API/HLS (direct access for debugging)
     healthcheck:

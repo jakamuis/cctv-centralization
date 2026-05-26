@@ -55,36 +55,36 @@ streams:
   kdl-01_31:
     - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/3101
 
-  # --- MDN-01 (SIG Medan, 192.168.152.101, remote VPN — TCP transport required) ---
+  # --- MDN-01 (SIG Medan, 192.168.152.101, remote VPN — ffmpeg handles reconnects better than native RTSP) ---
   mdn-01_1:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/101#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/101#video=h264#audio=pcmu"
   mdn-01_2:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/201#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/201#video=h264#audio=pcmu"
   mdn-01_3:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/301#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/301#video=h264#audio=pcmu"
   mdn-01_4:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/401#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/401#video=h264#audio=pcmu"
   mdn-01_5:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/501#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/501#video=h264#audio=pcmu"
   mdn-01_6:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/601#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/601#video=h264#audio=pcmu"
   mdn-01_7:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/701#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/701#video=h264#audio=pcmu"
   mdn-01_8:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/801#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/801#video=h264#audio=pcmu"
   mdn-01_11:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1101#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1101#video=h264#audio=pcmu"
   mdn-01_12:
-    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1201#transport=tcp"
+    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1201#video=h264#audio=pcmu"
 
-  # --- PIER-01 (SIG PIER, 192.168.15.200, ACTi SNVR — no RTSP, uses HTTP multipart/H264 via FFmpeg) ---
+  # --- PIER-01 (SIG PIER, 192.168.15.200, ACTi SNVR — multipart/H264 extracted via Python pipe) ---
   pier-01_1:
-    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel1?media&streamid=0#video=h264"
+    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 1 admin 123456#video=h264"
   pier-01_2:
-    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel2?media&streamid=0#video=h264"
+    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 2 admin 123456#video=h264"
   pier-01_3:
-    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel3?media&streamid=0#video=h264"
+    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 3 admin 123456#video=h264"
   pier-01_4:
-    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel4?media&streamid=0#video=h264"
+    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 4 admin 123456#video=h264"
   pier-01_5:
-    - "ffmpeg:http://admin:123456@192.168.15.200/virtualcamera/channel5?media&streamid=0#video=h264"
+    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 5 admin 123456#video=h264"
