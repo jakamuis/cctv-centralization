@@ -14,4 +14,7 @@ python-dotenv
 #   - Hikvision ISAPI calls (DigestAuth, async HTTP) — discovery/isapi_client.py
 #   - Google Sheet CSV download — discovery/csv_loader.py
 httpx
-PyYAML
+
+# Test runner
+pytest
+pytest-asyncio

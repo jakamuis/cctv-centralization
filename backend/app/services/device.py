@@ -22,7 +22,7 @@ class DeviceService:
         online: Optional[bool] = None,
         include_deleted: bool = False,
     ) -> List[Device]:
-        return await self.repo.list(
+        result = await self.repo.list(
             offset=offset,
             limit=limit,
             site_id=site_id,
@@ -31,6 +31,7 @@ class DeviceService:
             online=online,
             include_deleted=include_deleted,
         )
+        return result["items"]
 
     async def count_devices(
         self,

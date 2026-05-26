@@ -45,11 +45,12 @@ class CsvDeviceRow(BaseModel):
     password: Optional[str] = None
     enabled: Optional[str] = None
     notes: Optional[str] = None
-    vendor: Optional[str] = None   # "hikvision" (default) | "acti_snvr"
+    vendor: Optional[str] = None     # "hikvision" (default) | "acti_snvr"
+    timezone: Optional[str] = None   # "WIB" (UTC+7) | "WITA" (UTC+8) | "WIT" (UTC+9)
 
     # ---- field-level cleaners ----
 
-    @field_validator("site_code", "branch_name", "nvr_ip", "username", "notes", "vendor", mode="before")
+    @field_validator("site_code", "branch_name", "nvr_ip", "username", "notes", "vendor", "timezone", mode="before")
     @classmethod
     def strip_whitespace(cls, v):
         if isinstance(v, str):
@@ -105,8 +106,19 @@ class CsvDeviceRow(BaseModel):
     def vendor_str(self) -> str:
         """Normalised vendor string — defaults to 'hikvision' when blank."""
         if self.vendor:
-            return self.vendor.lower().strip()
+            v = self.vendor.lower().strip()
+            # Accept "acti" as shorthand for "acti_snvr"
+            if v == "acti":
+                return "acti_snvr"
+            return v
         return "hikvision"
+
+    @property
+    def timezone_str(self) -> str:
+        """Normalised timezone string — defaults to 'WIB' when blank."""
+        if self.timezone:
+            return self.timezone.upper().strip()
+        return "WIB"
 
     def is_valid_for_sync(self) -> tuple[bool, str]:
         """

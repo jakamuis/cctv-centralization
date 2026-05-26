@@ -157,11 +157,22 @@ def _format_isapi_dt_utc_z(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _format_isapi_dt_local_no_tz(dt: datetime) -> str:
+_NVR_TZ_OFFSETS = {
+    "WIB":  timedelta(hours=7),
+    "WITA": timedelta(hours=8),
+    "WIT":  timedelta(hours=9),
+}
+
+
+def _nvr_tz(nvr_timezone: str) -> timezone:
+    offset = _NVR_TZ_OFFSETS.get(nvr_timezone.upper(), timedelta(hours=7))
+    return timezone(offset)
+
+
+def _format_isapi_dt_local_no_tz(dt: datetime, nvr_timezone: str = "WIB") -> str:
     if dt.tzinfo is None:
-        return dt.strftime("%Y-%m-%dT%H:%M:%S")
-    utc_ts = dt.astimezone(timezone.utc).timestamp()
-    local_dt = datetime.fromtimestamp(utc_ts)
+        dt = dt.replace(tzinfo=timezone.utc)
+    local_dt = dt.astimezone(_nvr_tz(nvr_timezone))
     return local_dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
@@ -230,8 +241,14 @@ def _track_id_candidates(channel: int, discovered: Optional[List[str]] = None) -
 def _timestamp_candidates(
     start_time: datetime,
     end_time: datetime,
+    nvr_timezone: str = "WIB",
 ) -> List[Tuple[str, str, str]]:
     return [
+        (
+            _TS_LOCAL_NO_TZ,
+            _format_isapi_dt_local_no_tz(start_time, nvr_timezone),
+            _format_isapi_dt_local_no_tz(end_time, nvr_timezone),
+        ),
         (
             _TS_UTC_Z,
             _format_isapi_dt_utc_z(start_time),
@@ -241,11 +258,6 @@ def _timestamp_candidates(
             _TS_HIK_COMPACT,
             _format_isapi_dt_hik_compact(start_time),
             _format_isapi_dt_hik_compact(end_time),
-        ),
-        (
-            _TS_LOCAL_NO_TZ,
-            _format_isapi_dt_local_no_tz(start_time),
-            _format_isapi_dt_local_no_tz(end_time),
         ),
     ]
 
@@ -1131,6 +1143,7 @@ async def search_recordings(
     end_time: datetime,
     use_https: bool = False,
     rtsp_port: int = 554,
+    nvr_timezone: str = "WIB",
 ) -> List[RecordingSegment]:
     """
     Search for recording segments on a Hikvision NVR via ISAPI.
@@ -1163,7 +1176,7 @@ async def search_recordings(
 
     # Step 2: Build candidate lists
     track_ids = _track_id_candidates(channel, caps.track_ids)
-    ts_candidates = _timestamp_candidates(start_time, end_time)
+    ts_candidates = _timestamp_candidates(start_time, end_time, nvr_timezone)
 
     # Build searchType list — use discovered recording modes first
     search_types = list(_SEARCH_TYPES)

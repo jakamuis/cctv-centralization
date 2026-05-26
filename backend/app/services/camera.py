@@ -14,16 +14,12 @@ class CameraService:
         raw = camera_in.model_dump()
 
         allowed_fields = {
-            "device_id",
-            "channel_number",
+            "branch_id",
             "name",
-            "stream_url",
-            "resolution_width",
-            "resolution_height",
-            "fps",
-            "codec",
-            "ptz_enabled",
-            "recording_enabled",
+            "stream_name",
+            "rtsp_channel",
+            "status",
+            "enabled",
         }
 
         data = {

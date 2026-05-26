@@ -163,6 +163,7 @@ async def search_recordings_endpoint(
             start_time=start,
             end_time=end,
             rtsp_port=nvr.rtsp_port,
+            nvr_timezone=nvr.timezone,
         )
     except PlaybackSearchError as exc:
         logger.error("Recording search failed: %s", exc)
@@ -228,6 +229,7 @@ async def get_timeline_endpoint(
             start_time=start,
             end_time=end,
             rtsp_port=nvr.rtsp_port,
+            nvr_timezone=nvr.timezone,
         )
     except PlaybackSearchError as exc:
         logger.error("Timeline search failed: %s", exc)

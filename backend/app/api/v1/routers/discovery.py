@@ -143,7 +143,8 @@ class SyncDeviceRequest(BaseModel):
     rtsp_port: int = 554
     username: str
     password: str
-    vendor: str = "hikvision"   # "hikvision" | "acti_snvr"
+    vendor: str = "hikvision"     # "hikvision" | "acti_snvr"
+    timezone: str = "WIB"         # "WIB" (UTC+7) | "WITA" (UTC+8) | "WIT" (UTC+9)
     enabled: str = "true"
     notes: str = ""
 
@@ -174,6 +175,7 @@ async def sync_single_device(
         username=body.username,
         password=body.password,
         vendor=body.vendor,
+        timezone=body.timezone,
         enabled=body.enabled,
         notes=body.notes,
     )
@@ -313,33 +315,51 @@ async def start_channel_stream(
 
     # Build RTSP URL — credentials come from the NVR row (never exposed to browser).
     # Percent-encode username and password so special characters (* # % @ : etc.)
-    # don't break the RTSP URI or the go2rtc query-string parameter.
-    # safe='' means every non-unreserved character is encoded.
+    # don't break the RTSP URI.  safe='' means every non-unreserved character is encoded.
     encoded_user = quote(nvr.username, safe="")
     encoded_pass = quote(nvr.password, safe="")
+
+    vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
+    if vendor == "acti_snvr":
+        # ACTi SNVR uses channel-number-only path (no *01 suffix)
+        rtsp_path = f"/Streaming/Channels/{channel_id}"
+    else:
+        # Hikvision: channel N → path /Streaming/Channels/N01
+        rtsp_path = f"/Streaming/Channels/{channel_id}01"
+
     rtsp_url = (
         f"rtsp://{encoded_user}:{encoded_pass}"
         f"@{nvr.nvr_ip}:{nvr.rtsp_port}"
-        f"/Streaming/Channels/{channel_id}01"
+        f"{rtsp_path}"
     )
 
     # Deterministic stream name: site_code + channel_id (safe for go2rtc key)
     stream_name = f"{nvr.site_code.lower()}_{channel_id}"
 
-    # Register with go2rtc via its REST API
+    # Register with go2rtc via its REST API.
+    # Send the RTSP URL as the request body (not as a query param) so go2rtc
+    # stores it verbatim in its YAML config — avoids the bug where go2rtc
+    # decodes %23 → # and then writes an unquoted '#' into YAML which the
+    # YAML parser treats as a comment, breaking passwords that contain '#'.
     go2rtc_api = f"{settings.streaming.internal_go2rtc_url}/api/streams"
 
     try:
         async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.put(
                 go2rtc_api,
-                params={"name": stream_name, "src": rtsp_url},
+                params={"name": stream_name},
+                content=rtsp_url,
+                headers={"Content-Type": "text/plain"},
             )
             if resp.status_code not in (200, 201, 204):
                 logger.warning(
-                    "go2rtc registration returned %d for stream %s",
-                    resp.status_code, stream_name,
+                    "go2rtc registration returned %d for stream %s: %s",
+                    resp.status_code,
+                    stream_name,
+                    resp.text[:300],
                 )
+            else:
+                logger.info("Registered stream %s -> go2rtc", stream_name)
     except httpx.RequestError as exc:
         logger.error("Failed to reach go2rtc: %s", exc)
         raise HTTPException(
@@ -347,7 +367,6 @@ async def start_channel_stream(
             detail=f"go2rtc unreachable: {exc}",
         ) from exc
 
-    logger.info("Registered stream %s → go2rtc", stream_name)
     return {"stream_name": stream_name}
 
 

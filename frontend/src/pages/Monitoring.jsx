@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import PlaybackPage from "./Playback";
 import {
   LayoutDashboard,
   Monitor,
@@ -25,6 +24,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { discoveryApi } from "../api";
+import PlaybackView from "./Playback";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -549,7 +549,7 @@ function MsePlayer({ streamName }) {
 //   Left  (flex-1): compact video player
 //   Right (w-72):   camera info panel
 
-function LivePreviewPane({ camera, branch, streamName, streamLoading, onNavigate }) {
+function LivePreviewPane({ camera, branch, streamName, streamLoading }) {
   const [streamLoaded, setStreamLoaded] = useState(false);
 
   // Reset preview state whenever the selected camera changes
@@ -804,10 +804,7 @@ function LivePreviewPane({ camera, branch, streamName, streamLoading, onNavigate
                   {streamLoading ? "Registering…" : "Preview Live Stream"}
                 </button>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => onNavigate?.("Playback")}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-transparent border border-border hover:bg-secondary text-foreground text-xs font-medium rounded transition-colors"
-                  >
+                  <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-transparent border border-border hover:bg-secondary text-foreground text-xs font-medium rounded transition-colors">
                     <Play size={12} />
                     Playback
                   </button>
@@ -890,7 +887,7 @@ function normaliseChannel(ch) {
 
 // ─── Monitoring View ──────────────────────────────────────────────────────────
 
-function MonitoringView({ onNavigate }) {
+function MonitoringView() {
   const [branches,        setBranches]        = useState([]);
   const [cameras,         setCameras]         = useState([]);
   const [selectedBranch,  setSelectedBranch]  = useState(null);
@@ -989,7 +986,6 @@ function MonitoringView({ onNavigate }) {
         branch={selectedBranch}
         streamName={streamName}
         streamLoading={streamLoading}
-        onNavigate={onNavigate}
       />
     </>
   );
@@ -1054,11 +1050,9 @@ export default function MonitoringApp({ user, onLogout }) {
 
         <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
           {activeNav === "Monitoring" ? (
-            <MonitoringView onNavigate={setActiveNav} />
+            <MonitoringView />
           ) : activeNav === "Playback" ? (
-            <div className="flex-1 overflow-y-auto min-h-0">
-              <PlaybackPage />
-            </div>
+            <PlaybackView />
           ) : (
             <PlaceholderView label={activeNav} />
           )}

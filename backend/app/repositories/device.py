@@ -79,20 +79,35 @@ class DeviceRepository:
     async def list(
         self,
         skip: int = 0,
+        offset: Optional[int] = None,
         limit: int = 100,
         site_id: Optional[UUID] = None,
         status: Optional[str] = None,
+        vendor: Optional[str] = None,
+        online: Optional[bool] = None,
+        include_deleted: bool = False,
     ):
+        if offset is not None:
+            skip = offset
 
-        query = select(Device).where(
-            Device.is_deleted == False
-        )
+        query = select(Device)
+
+        if not include_deleted and hasattr(Device, "is_deleted"):
+            query = query.where(Device.is_deleted == False)
 
         if site_id:
             query = query.where(Device.site_id == site_id)
 
         if status:
             query = query.where(Device.status == status)
+
+        if vendor:
+            query = query.where(Device.vendor == vendor)
+
+        if online is not None:
+            query = query.where(
+                Device.status == ("ONLINE" if online else "OFFLINE")
+            )
 
         total_query = select(func.count()).select_from(
             query.subquery()
@@ -112,6 +127,25 @@ class DeviceRepository:
             "total": total,
             "items": items,
         }
+
+    async def count(
+        self,
+        site_id: Optional[UUID] = None,
+        status: Optional[str] = None,
+        vendor: Optional[str] = None,
+        online: Optional[bool] = None,
+        include_deleted: bool = False,
+    ) -> int:
+        result = await self.list(
+            skip=0,
+            limit=1,
+            site_id=site_id,
+            status=status,
+            vendor=vendor,
+            online=online,
+            include_deleted=include_deleted,
+        )
+        return result["total"]
 
     async def update(self, device, payload):
 
@@ -136,6 +170,10 @@ class DeviceRepository:
         return device
 
     async def soft_delete(self, device):
+        if not hasattr(device, "is_deleted"):
+            await self.db.delete(device)
+            await self.db.commit()
+            return device
 
         device.is_deleted = True
 
@@ -150,6 +188,8 @@ class DeviceRepository:
         return device
 
     async def restore(self, device):
+        if not hasattr(device, "is_deleted"):
+            return device
 
         device.is_deleted = False
 

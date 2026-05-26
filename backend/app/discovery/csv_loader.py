@@ -162,7 +162,14 @@ def _parse_csv_text(
     rows: List[CsvDeviceRow] = []
     errors: List[str] = []
 
-    reader = csv.DictReader(io.StringIO(raw_text))
+    # Strip UTF-8 BOM if present (exported from Excel / Google Sheets)
+    raw_text = raw_text.lstrip("﻿")
+
+    # Auto-detect delimiter: use semicolon if first header line contains ';'
+    first_line = raw_text.splitlines()[0] if raw_text.strip() else ""
+    delimiter = ";" if ";" in first_line else ","
+
+    reader = csv.DictReader(io.StringIO(raw_text), delimiter=delimiter)
 
     if reader.fieldnames is None:
         errors.append("CSV appears to be empty — no header row found")

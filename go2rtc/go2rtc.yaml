@@ -1,23 +1,90 @@
 api:
   origin: '*'
 streams:
-  cam01:
-    url: rtsp://admin:Indogas*19%23@192.168.2.100:554/Streaming/Channels/102
+  # --- KDL-01 (SIG Kendal, 192.168.2.100, local LAN) ---
   kdl-01_1:
-  - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/101
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/101
+  kdl-01_2:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/201
+  kdl-01_3:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/301
+  kdl-01_4:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/401
+  kdl-01_5:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/501
+  kdl-01_6:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/601
+  kdl-01_7:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/701
+  kdl-01_8:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/801
+  kdl-01_9:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/901
+  kdl-01_10:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1001
+  kdl-01_11:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1101
+  kdl-01_12:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1201
+  kdl-01_13:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1301
+  kdl-01_19:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1901
+  kdl-01_20:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2001
+  kdl-01_21:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2101
+  kdl-01_22:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2201
+  kdl-01_23:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2301
+  kdl-01_24:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2401
+  kdl-01_25:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2501
+  kdl-01_26:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2601
+  kdl-01_27:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2701
+  kdl-01_28:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2801
+  kdl-01_29:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2901
+  kdl-01_30:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/3001
+  kdl-01_31:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/3101
+
+  # --- MDN-01 (SIG Medan, 192.168.152.101, remote VPN — TCP transport required) ---
   mdn-01_1:
-  - rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/101
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/101#transport=tcp"
+  mdn-01_2:
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/201#transport=tcp"
+  mdn-01_3:
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/301#transport=tcp"
+  mdn-01_4:
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/401#transport=tcp"
+  mdn-01_5:
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/501#transport=tcp"
+  mdn-01_6:
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/601#transport=tcp"
+  mdn-01_7:
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/701#transport=tcp"
+  mdn-01_8:
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/801#transport=tcp"
   mdn-01_11:
-  - rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1101
-  pb_10ea700f_ch1_20260522T080000Z:
-  - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/tracks/101?starttime=20260522T080000Z&endtime=20260522T125900Z
-  sig-kendal-entrance:
-    url: rtsp://admin:Indogas*19%23@192.168.2.100:554/Streaming/Channels/502
-  sig-kendal-gudang-01:
-    url: rtsp://admin:Indogas*19%23@192.168.2.100:554/Streaming/Channels/202
-  sig-kendal-lobby:
-    url: rtsp://admin:Indogas*19%23@192.168.2.100:554/Streaming/Channels/302
-  sig-kendal-office-lt1:
-    url: rtsp://admin:Indogas*19%23@192.168.2.100:554/Streaming/Channels/102
-  sig-kendal-parking:
-    url: rtsp://admin:Indogas*19%23@192.168.2.100:554/Streaming/Channels/402
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1101#transport=tcp"
+  mdn-01_12:
+    - "rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1201#transport=tcp"
+
+  # --- PIER-01 (SIG PIER, 192.168.15.200, ACTi SNVR, remote VPN — TCP transport required) ---
+  pier-01_1:
+    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/1#transport=tcp"
+  pier-01_2:
+    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/2#transport=tcp"
+  pier-01_3:
+    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/3#transport=tcp"
+  pier-01_4:
+    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/4#transport=tcp"
+  pier-01_5:
+    - "rtsp://admin:123456@192.168.15.200:554/Streaming/Channels/5#transport=tcp"

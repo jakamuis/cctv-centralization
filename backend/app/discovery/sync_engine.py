@@ -342,6 +342,7 @@ async def _sync_single_device(
             sync_status=sync_status,
             sync_error=sync_error,
             vendor=row.vendor_str,
+            nvr_timezone=row.timezone_str,
         )
 
         if sync_status == "synced" and channels:

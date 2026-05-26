@@ -1,6 +1,9 @@
 import pytest
 from httpx import AsyncClient
 
+from app.db.session import AsyncSessionLocal
+from app.models.branch import Branch
+
 
 @pytest.mark.asyncio
 async def test_site_crud(async_client: AsyncClient):
@@ -77,41 +80,25 @@ async def test_device_crud_and_soft_delete(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_camera_crud_and_soft_delete(async_client: AsyncClient):
-    site_response = await async_client.post(
-        "/api/v1/sites/",
-        json={
-            "code": "S003",
-            "name": "Camera Site",
-            "address": "789 Camera St",
-            "timezone": "UTC",
-            "region": "Camera Region"
-        }
-    )
-
-    site_id = site_response.json()["id"]
-
-    device_response = await async_client.post(
-        "/api/v1/devices/",
-        json={
-            "site_id": site_id,
-            "device_type": "NVR",
-            "vendor": "Hikvision",
-            "model": "DS-7608",
-            "serial_number": "SN999999",
-            "ip_address": "192.168.1.20",
-            "status": "ONLINE"
-        }
-    )
-
-    device_id = device_response.json()["id"]
+    async with AsyncSessionLocal() as session:
+        branch = Branch(
+            name="Camera Branch",
+            code="CAMERA-BRANCH",
+            location="Camera Region",
+        )
+        session.add(branch)
+        await session.commit()
+        await session.refresh(branch)
 
     response = await async_client.post(
         "/api/v1/cameras/",
         json={
-            "device_id": device_id,
-            "channel_number": 1,
+            "branch_id": str(branch.id),
             "name": "Front Door Camera",
-            "rtsp_path": "/Streaming/Channels/101",
+            "stream_name": "front_door_camera",
+            "rtsp_channel": "101",
+            "status": "ONLINE",
+            "enabled": True,
         }
     )
 

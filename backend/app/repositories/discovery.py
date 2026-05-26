@@ -63,6 +63,7 @@ class DiscoveryRepository:
         sync_status: str,
         sync_error: Optional[str] = None,
         vendor: str = "hikvision",
+        nvr_timezone: str = "WIB",
     ) -> DiscoveredNVR:
         """
         Insert or update a DiscoveredNVR row.
@@ -85,6 +86,7 @@ class DiscoveryRepository:
             "username": username,
             "password": password,
             "vendor": vendor,
+            "timezone": nvr_timezone,
             "sync_status": sync_status,
             "sync_error": sync_error,
             "last_synced_at": now,
