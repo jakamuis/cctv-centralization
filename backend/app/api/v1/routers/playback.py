@@ -153,24 +153,32 @@ async def search_recordings_endpoint(
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
 
-    try:
-        segments = await search_recordings(
-            nvr_ip=nvr.nvr_ip,
-            http_port=nvr.http_port,
-            username=nvr.username,
-            password=nvr.password,
-            channel=body.channel,
-            start_time=start,
-            end_time=end,
-            rtsp_port=nvr.rtsp_port,
-            nvr_timezone=nvr.timezone,
-        )
-    except PlaybackSearchError as exc:
-        logger.error("Recording search failed: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Recording search failed: {exc}",
-        )
+    vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
+    if vendor == "acti_snvr":
+        # ACTi SNVR has no recording search API — playback is by timestamp.
+        # Return the whole requested window as one available segment so the
+        # user can click anywhere on the timeline and start playback.
+        from app.services.playback.hikvision_playback import RecordingSegment
+        segments = [RecordingSegment(start=start, end=end, track_id="1", recording_type="normal")]
+    else:
+        try:
+            segments = await search_recordings(
+                nvr_ip=nvr.nvr_ip,
+                http_port=nvr.http_port,
+                username=nvr.username,
+                password=nvr.password,
+                channel=body.channel,
+                start_time=start,
+                end_time=end,
+                rtsp_port=nvr.rtsp_port,
+                nvr_timezone=nvr.timezone,
+            )
+        except PlaybackSearchError as exc:
+            logger.error("Recording search failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Recording search failed: {exc}",
+            )
 
     segment_schemas = [
         RecordingSegmentSchema(
@@ -219,24 +227,29 @@ async def get_timeline_endpoint(
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
 
-    try:
-        segments = await search_recordings(
-            nvr_ip=nvr.nvr_ip,
-            http_port=nvr.http_port,
-            username=nvr.username,
-            password=nvr.password,
-            channel=body.channel,
-            start_time=start,
-            end_time=end,
-            rtsp_port=nvr.rtsp_port,
-            nvr_timezone=nvr.timezone,
-        )
-    except PlaybackSearchError as exc:
-        logger.error("Timeline search failed: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Recording search failed: {exc}",
-        )
+    vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
+    if vendor == "acti_snvr":
+        from app.services.playback.hikvision_playback import RecordingSegment
+        segments = [RecordingSegment(start=start, end=end, track_id="1", recording_type="normal")]
+    else:
+        try:
+            segments = await search_recordings(
+                nvr_ip=nvr.nvr_ip,
+                http_port=nvr.http_port,
+                username=nvr.username,
+                password=nvr.password,
+                channel=body.channel,
+                start_time=start,
+                end_time=end,
+                rtsp_port=nvr.rtsp_port,
+                nvr_timezone=nvr.timezone,
+            )
+        except PlaybackSearchError as exc:
+            logger.error("Timeline search failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Recording search failed: {exc}",
+            )
 
     timeline = build_timeline(segments, start, end)
 
