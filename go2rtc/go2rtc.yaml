@@ -88,3 +88,11 @@ streams:
     - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 4 admin 123456#video=h264"
   pier-01_5:
     - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 5 admin 123456#video=h264"
+  playback_fd3b13ee_ch1_20260525T170000Z_ef54bf89:
+    - rtsp://admin:123456@192.168.15.200:554/Streaming/tracks/101?starttime=20260525T170000Z&endtime=20260525T185900Z
+  playback_fd3b13ee_ch1_20260526T170000Z_bc665dfb:
+    - rtsp://admin:123456@192.168.15.200:554/Streaming/tracks/101?starttime=20260526T170000Z&endtime=20260526T185900Z
+  playback_c248e1ba_ch29_20260525T170000Z_07115932:
+    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/tracks/2901?starttime=20260525T170000Z&endtime=20260526T165900Z
+  playback_fd3b13ee_ch2_20260525T170000Z_8b57b65d:
+    - rtsp://admin:123456@192.168.15.200:554/Streaming/tracks/201?starttime=20260525T170000Z&endtime=20260526T165900Z
