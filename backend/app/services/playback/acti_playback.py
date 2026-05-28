@@ -85,13 +85,10 @@ def build_playback_http_url(
         start_time = start_time.replace(tzinfo=timezone.utc)
 
     unix_ts = int(start_time.timestamp())
-    path = (
-        f"/playback/?cmd=1&channel={channel}"
-        f"&sec={unix_ts}&usec=0&mode=0&i_only={i_only}"
-    )
     port_arg = f" {http_port}" if http_port != 80 else ""
     return (
         f"exec:python3 /scripts/acti_pipe.py"
-        f" {nvr_ip} {path} {quote(username, safe='')} {quote(password, safe='')}{port_arg}"
+        f" --playback {nvr_ip} {channel} {unix_ts}"
+        f" {quote(username, safe='')} {quote(password, safe='')}{port_arg}"
         f"#video=h264"
     )
