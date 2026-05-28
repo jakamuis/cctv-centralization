@@ -33,8 +33,8 @@ function normaliseNvr(nvr) {
   return {
     _raw:   nvr,
     id:     nvr.id,
-    name:   nvr.branch_name || nvr.device_name || nvr.site_code || nvr.id,
-    code:   nvr.site_code,
+    name:   nvr.branch_name || nvr.device_name || nvr.code || nvr.id,
+    code:   nvr.code,
     ip:     nvr.nvr_ip,
     status: nvr.sync_status === 'synced' ? 'online' : 'offline',
   }

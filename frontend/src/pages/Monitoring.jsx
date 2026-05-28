@@ -571,8 +571,11 @@ function LivePreviewPane({ camera, branch, streamName, streamLoading }) {
   const channelIp       = camera?._raw?.ip_address || null;
 
   // NVR metadata from the normalised branch object
-  const nvrIp    = branch?.ip || null;
-  const nvrModel = branch?._raw?.model || null;
+  const nvrIp     = branch?.ip || null;
+  const nvrModel  = branch?._raw?.model || null;
+  const nvrName   = branch?.name || branch?.code || null;
+  const rawVendor = branch?._raw?.vendor || "hikvision";
+  const nvrVendor = rawVendor === "acti_snvr" ? "ACTi SNVR" : "Hikvision";
 
   const streamMeta = {
     protocol:   channelProtocol,
@@ -753,7 +756,9 @@ function LivePreviewPane({ camera, branch, streamName, streamLoading }) {
                     {[
                       { label: "Camera",  value: camName },
                       { label: "Branch",  value: branchName },
-                      ...(nvrModel ? [{ label: "Model", value: nvrModel }] : []),
+                      ...(nvrName ? [{ label: "NVR",    value: nvrName }] : []),
+                      { label: "Vendor",  value: nvrVendor },
+                      ...(nvrModel ? [{ label: "Model",  value: nvrModel }] : []),
                       { label: "Status",  value: isOnline ? "Online" : "Offline",
                         color: isOnline ? "text-emerald-400" : "text-red-400" },
                     ].map(({ label, value, color }) => (
@@ -859,8 +864,8 @@ function normaliseNvr(nvr) {
     // keep the original for reference (needed when loading channels)
     _raw: nvr,
     id:     nvr.id,
-    name:   nvr.branch_name || nvr.device_name || nvr.site_code || nvr.id,
-    code:   nvr.site_code,
+    name:   nvr.branch_name || nvr.device_name || nvr.code || nvr.id,
+    code:   nvr.code,
     ip:     nvr.nvr_ip,
     // treat "synced" as online; anything else (unreachable / auth_error / failed) as offline
     status: nvr.sync_status === "synced" ? "online" : "offline",
@@ -871,16 +876,17 @@ function normaliseNvr(nvr) {
  * Map a raw channel object from GET /discovery/nvrs/{id}/channels into the
  * shape the CamerasPane expects:
  *   { id, name, channel_number, status }
+ *
+ * nvrOnline — pass the parent NVR's online status so a channel can only be
+ * green when both the NVR is reachable AND the channel is enabled.
  */
-function normaliseChannel(ch) {
+function normaliseChannel(ch, nvrOnline = true) {
   return {
     _raw:           ch,
     id:             ch.id,
     name:           ch.channel_name || `Channel ${ch.channel_id}`,
     channel_number: ch.channel_id,
-    // is_enabled drives the online/offline badge
-    status:         ch.is_enabled ? "online" : "offline",
-    // keep channel_id for stream registration
+    status:         (nvrOnline && ch.is_enabled) ? "online" : "offline",
     channel_id:     ch.channel_id,
   };
 }
@@ -931,7 +937,8 @@ function MonitoringView() {
       .then((data) => {
         // Response shape: { nvr_id, channels: [...] }
         const raw = Array.isArray(data) ? data : (data?.channels ?? []);
-        setCameras(raw.map(normaliseChannel));
+        const nvrOnline = branch.status === "online";
+        setCameras(raw.map((ch) => normaliseChannel(ch, nvrOnline)));
       })
       .catch((err) => {
         console.error("Failed to load channels:", err);
@@ -958,8 +965,11 @@ function MonitoringView() {
         }
       })
       .catch((err) => {
-        // Non-fatal: stream registration failure just means no live preview
-        console.warn("Stream registration failed (non-fatal):", err);
+        console.warn("Stream registration failed:", err);
+        // Mark this specific camera as offline so its dot turns red
+        setCameras((prev) =>
+          prev.map((c) => c.id === cam.id ? { ...c, status: "offline" } : c)
+        );
       })
       .finally(() => setStreamLoading(false));
   }, [selectedBranch]);

@@ -52,8 +52,8 @@ class DiscoveryRepository:
     async def upsert_nvr(
         self,
         *,
-        site_code: str,
-        branch_name: Optional[str],
+        code: str,
+        branch_name: str,
         nvr_ip: str,
         http_port: int,
         rtsp_port: int,
@@ -68,7 +68,7 @@ class DiscoveryRepository:
         """
         Insert or update a DiscoveredNVR row.
 
-        The unique constraint on (site_code, nvr_ip, http_port) is used as
+        The unique constraint on (code, nvr_ip, http_port) is used as
         the conflict target.  On conflict every mutable column is refreshed
         so the row always reflects the latest sync.
 
@@ -78,7 +78,7 @@ class DiscoveryRepository:
         now = datetime.now(tz=timezone.utc)
 
         values: dict = {
-            "site_code": site_code,
+            "code": code,
             "branch_name": branch_name,
             "nvr_ip": nvr_ip,
             "http_port": http_port,
@@ -109,12 +109,11 @@ class DiscoveryRepository:
             pg_insert(DiscoveredNVR)
             .values(**values)
             .on_conflict_do_update(
-                constraint="uq_discovered_nvr_site_ip_port",
+                constraint="uq_discovered_nvr_code_ip_port",
                 set_={
                     k: v
                     for k, v in values.items()
-                    # Don't overwrite the primary key or created_at
-                    if k not in ("site_code", "nvr_ip", "http_port")
+                    if k not in ("code", "nvr_ip", "http_port")
                 },
             )
             .returning(DiscoveredNVR.id)
@@ -124,8 +123,8 @@ class DiscoveryRepository:
         nvr_id: UUID = result.scalar_one()
 
         logger.debug(
-            "Upserted DiscoveredNVR id=%s site=%s ip=%s status=%s",
-            nvr_id, site_code, nvr_ip, sync_status,
+            "Upserted DiscoveredNVR id=%s code=%s ip=%s status=%s",
+            nvr_id, code, nvr_ip, sync_status,
         )
 
         # Re-fetch the full ORM object so the caller has a proper instance
@@ -140,12 +139,12 @@ class DiscoveryRepository:
         return result.scalar_one_or_none()
 
     async def get_nvr_by_ip(
-        self, site_code: str, nvr_ip: str, http_port: int
+        self, code: str, nvr_ip: str, http_port: int
     ) -> Optional[DiscoveredNVR]:
         """Fetch a DiscoveredNVR by its natural key."""
         result = await self.db.execute(
             select(DiscoveredNVR).where(
-                DiscoveredNVR.site_code == site_code,
+                DiscoveredNVR.code == code,
                 DiscoveredNVR.nvr_ip == nvr_ip,
                 DiscoveredNVR.http_port == http_port,
             )
@@ -154,18 +153,18 @@ class DiscoveryRepository:
 
     async def list_nvrs(
         self,
-        site_code: Optional[str] = None,
+        code: Optional[str] = None,
         sync_status: Optional[str] = None,
         offset: int = 0,
         limit: int = 200,
     ) -> List[DiscoveredNVR]:
         """List DiscoveredNVR rows with optional filters."""
         query = select(DiscoveredNVR)
-        if site_code:
-            query = query.where(DiscoveredNVR.site_code == site_code)
+        if code:
+            query = query.where(DiscoveredNVR.code == code)
         if sync_status:
             query = query.where(DiscoveredNVR.sync_status == sync_status)
-        query = query.order_by(DiscoveredNVR.site_code, DiscoveredNVR.nvr_ip)
+        query = query.order_by(DiscoveredNVR.code, DiscoveredNVR.nvr_ip)
         query = query.offset(offset).limit(limit)
         result = await self.db.execute(query)
         return list(result.scalars().all())

@@ -12,7 +12,7 @@ Why this file exists:
 Table: discovered_nvrs
 
 Key design decisions:
-  - `site_code` + `nvr_ip` + `http_port` form a natural unique key.
+  - `code` + `nvr_ip` + `http_port` form a natural unique key.
     If the same NVR is re-synced, the row is updated (upsert), not duplicated.
   - Credentials are stored as-is for now (plain text).  In a later phase
     these should be encrypted at rest using a KMS or Fernet key.
@@ -25,10 +25,8 @@ Key design decisions:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 
 from sqlalchemy import (
-    Boolean,
     Column,
     DateTime,
     Integer,
@@ -50,10 +48,9 @@ class DiscoveredNVR(Base):
     __tablename__ = "discovered_nvrs"
 
     __table_args__ = (
-        # Prevent duplicate rows for the same physical device
         UniqueConstraint(
-            "site_code", "nvr_ip", "http_port",
-            name="uq_discovered_nvr_site_ip_port",
+            "code", "nvr_ip", "http_port",
+            name="uq_discovered_nvr_code_ip_port",
         ),
     )
 
@@ -68,8 +65,8 @@ class DiscoveredNVR(Base):
 
     # ---- seed data (from CSV) ----
 
-    site_code = Column(String(100), nullable=False, index=True)
-    branch_name = Column(String(255), nullable=True)
+    code = Column(String(100), nullable=False, index=True)
+    branch_name = Column(String(255), nullable=False)
     nvr_ip = Column(String(45), nullable=False, index=True)
     http_port = Column(Integer, nullable=False, default=80)
     rtsp_port = Column(Integer, nullable=False, default=554)
@@ -128,7 +125,7 @@ class DiscoveredNVR(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<DiscoveredNVR site={self.site_code!r} "
+            f"<DiscoveredNVR code={self.code!r} "
             f"ip={self.nvr_ip!r} port={self.http_port} "
             f"status={self.sync_status!r}>"
         )

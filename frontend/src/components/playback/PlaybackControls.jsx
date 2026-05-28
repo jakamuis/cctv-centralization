@@ -53,7 +53,7 @@ export default function PlaybackControls({
           <option value="">— Select NVR —</option>
           {nvrs.map(nvr => (
             <option key={nvr.id} value={nvr.id}>
-              {nvr.device_name || nvr.nvr_ip} ({nvr.site_code})
+              {nvr.device_name || nvr.nvr_ip} ({nvr.code})
             </option>
           ))}
         </select>

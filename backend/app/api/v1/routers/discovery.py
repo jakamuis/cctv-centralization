@@ -40,17 +40,18 @@ Error handling:
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from typing import Optional
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
 # from app.api.v1.dependencies import get_current_user  # TEMP: disabled for local testing
 from app.db.session import get_db
+from app.discovery.csv_loader import parse_csv_rows
 from app.discovery.sync_engine import run_sync, _sync_single_device
 from app.discovery.schemas import SyncResponse, CsvDeviceRow, DeviceSyncResult
 # from app.models.user import User  # TEMP: not needed without auth
@@ -136,8 +137,7 @@ async def trigger_sync(
 # ---------------------------------------------------------------------------
 
 class SyncDeviceRequest(BaseModel):
-    site_code: str
-    branch_name: str = ""
+    branch_name: str
     nvr_ip: str
     http_port: int = 80
     rtsp_port: int = 554
@@ -146,7 +146,6 @@ class SyncDeviceRequest(BaseModel):
     vendor: str = "hikvision"     # "hikvision" | "acti_snvr"
     timezone: str = "WIB"         # "WIB" (UTC+7) | "WITA" (UTC+8) | "WIT" (UTC+9)
     enabled: str = "true"
-    notes: str = ""
 
 
 @router.post(
@@ -167,7 +166,6 @@ async def sync_single_device(
     For Hikvision leave vendor blank or set **vendor = hikvision**.
     """
     row = CsvDeviceRow(
-        site_code=body.site_code,
         branch_name=body.branch_name,
         nvr_ip=body.nvr_ip,
         http_port=str(body.http_port),
@@ -177,11 +175,103 @@ async def sync_single_device(
         vendor=body.vendor,
         timezone=body.timezone,
         enabled=body.enabled,
-        notes=body.notes,
     )
 
     result = await _sync_single_device(db, row)
     return result
+
+
+# ---------------------------------------------------------------------------
+# POST /discovery/sync/upload  — sync from uploaded CSV file
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/sync/upload",
+    response_model=SyncResponse,
+    summary="Sync NVR devices from an uploaded CSV file",
+    status_code=status.HTTP_200_OK,
+)
+async def sync_from_upload(
+    file: UploadFile = File(..., description="CSV file with columns: branch_name (or branch), nvr_ip (or ip), username, password, vendor, timezone"),
+    db: AsyncSession = Depends(get_db),
+) -> SyncResponse:
+    """
+    Upload a CSV file and run discovery sync against each enabled row.
+
+    Accepted column names (case-insensitive):
+    - **branch_name** or **branch** — location name (required)
+    - **nvr_ip** or **ip** — NVR IP address (required)
+    - **username** — NVR login (required)
+    - **password** — NVR password (required)
+    - **vendor** — hikvision / acti / acti_snvr (optional, default: hikvision)
+    - **timezone** — WIB / WITA / WIT (optional, default: WIB)
+    - **http_port** — HTTP port (optional, default: 80)
+    - **enabled** — true/false (optional, default: true)
+
+    Rows with multiple IPs (e.g. "192.168.1.1 & 192.168.1.2") are skipped.
+    """
+    raw_bytes = await file.read()
+    try:
+        raw_text = raw_bytes.decode("utf-8-sig")  # handles BOM from Excel
+    except UnicodeDecodeError:
+        raw_text = raw_bytes.decode("latin-1")
+
+    rows, parse_errors = parse_csv_rows(raw_text)
+
+    if parse_errors:
+        for err in parse_errors:
+            logger.warning("CSV upload parse warning: %s", err)
+
+    # Abort early if the CSV couldn't be parsed at all
+    if not rows and parse_errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"parse_errors": parse_errors},
+        )
+
+    total_rows = len(rows)
+    enabled_rows = [r for r in rows if r.is_enabled]
+
+    results: list[DeviceSyncResult] = []
+    synced_count = skipped_count = failed_count = 0
+
+    for row in rows:
+        if not row.is_enabled:
+            results.append(DeviceSyncResult(
+                code=row.code, nvr_ip=row.nvr_ip or "(unknown)",
+                http_port=row.http_port_int, status="skipped",
+                reason="Row disabled (enabled=false)",
+            ))
+            skipped_count += 1
+            continue
+
+        # Skip rows where the IP field contains multiple addresses
+        if row.nvr_ip and ("&" in row.nvr_ip or "," in row.nvr_ip):
+            results.append(DeviceSyncResult(
+                code=row.code, nvr_ip=row.nvr_ip,
+                http_port=row.http_port_int, status="skipped",
+                reason=f"Multiple IPs not supported: {row.nvr_ip!r}",
+            ))
+            skipped_count += 1
+            continue
+
+        result = await _sync_single_device(db, row)
+        results.append(result)
+        if result.status == "synced":
+            synced_count += 1
+        elif result.status == "skipped":
+            skipped_count += 1
+        else:
+            failed_count += 1
+
+    return SyncResponse(
+        total_rows=total_rows,
+        enabled_rows=len(enabled_rows),
+        synced=synced_count,
+        skipped=skipped_count,
+        failed=failed_count,
+        results=results,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +284,7 @@ async def sync_single_device(
     status_code=status.HTTP_200_OK,
 )
 async def list_nvrs(
-    site_code: Optional[str] = Query(default=None, description="Filter by site code"),
+    code: Optional[str] = Query(default=None, description="Filter by code"),
     sync_status: Optional[str] = Query(
         default=None,
         description="Filter by sync status: synced | unreachable | auth_error | failed",
@@ -213,7 +303,7 @@ async def list_nvrs(
 
     repo = DiscoveryRepository(db)
     nvrs = await repo.list_nvrs(
-        site_code=site_code,
+        code=code,
         sync_status=sync_status,
         offset=offset,
         limit=limit,
@@ -255,7 +345,7 @@ async def list_nvr_channels(
 
     return {
         "nvr_id": str(nvr_id),
-        "site_code": nvr.site_code,
+        "code": nvr.code,
         "nvr_ip": nvr.nvr_ip,
         "http_port": nvr.http_port,
         "channel_count": len(channels),
@@ -331,15 +421,27 @@ async def start_channel_stream(
             f"#video=h264"
         )
     else:
-        # Hikvision: channel N → RTSP path /Streaming/Channels/N01
+        # Hikvision: wrap with ffmpeg so go2rtc always delivers H.264 to the
+        # browser, regardless of whether the camera is H.264 or H.265 (HEVC).
+        # go2rtc/ffmpeg passes through H.264 without re-encoding; H.265 is
+        # transcoded on the fly.
+        #
+        # RTSP path format:
+        #   Firmware V3.x (very old): /Streaming/Channels/N  (no stream suffix)
+        #   All newer firmware:       /Streaming/Channels/N01
+        firmware = getattr(nvr, "firmware_version", "") or ""
+        if firmware.startswith("V3."):
+            channel_path = f"/Streaming/Channels/{channel_id}"
+        else:
+            channel_path = f"/Streaming/Channels/{channel_id}01"
+
         rtsp_url = (
-            f"rtsp://{encoded_user}:{encoded_pass}"
+            f"ffmpeg:rtsp://{encoded_user}:{encoded_pass}"
             f"@{nvr.nvr_ip}:{nvr.rtsp_port}"
-            f"/Streaming/Channels/{channel_id}01"
+            f"{channel_path}#video=h264"
         )
 
-    # Deterministic stream name: site_code + channel_id (safe for go2rtc key)
-    stream_name = f"{nvr.site_code.lower()}_{channel_id}"
+    stream_name = f"{nvr.code}_{channel_id}"
 
     # Register with go2rtc via its REST API.
     # Send the RTSP URL as the request body (not as a query param) so go2rtc
@@ -352,9 +454,7 @@ async def start_channel_stream(
         async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.put(
                 go2rtc_api,
-                params={"name": stream_name},
-                content=rtsp_url,
-                headers={"Content-Type": "text/plain"},
+                params={"name": stream_name, "src": rtsp_url},
             )
             if resp.status_code not in (200, 201, 204):
                 logger.warning(
@@ -385,7 +485,7 @@ def _nvr_to_dict(nvr) -> dict:
     """
     return {
         "id": str(nvr.id),
-        "site_code": nvr.site_code,
+        "code": nvr.code,
         "branch_name": nvr.branch_name,
         "nvr_ip": nvr.nvr_ip,
         "http_port": nvr.http_port,

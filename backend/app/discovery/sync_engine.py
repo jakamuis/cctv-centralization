@@ -139,7 +139,7 @@ async def run_sync(
         if not row.is_enabled:
             results.append(
                 DeviceSyncResult(
-                    site_code=row.site_code or "(unknown)",
+                    code=row.code,
                     nvr_ip=row.nvr_ip or "(unknown)",
                     http_port=row.http_port_int,
                     status="skipped",
@@ -189,11 +189,11 @@ async def _sync_single_device(
     into a DeviceSyncResult with status "failed" / "unreachable" / "auth_error".
     """
 
-    site_code = row.site_code or "(unknown)"
+    code = row.code
     nvr_ip = row.nvr_ip or "(unknown)"
     http_port = row.http_port_int
 
-    logger.info("Syncing device: site=%s ip=%s port=%d", site_code, nvr_ip, http_port)
+    logger.info("Syncing device: code=%s ip=%s port=%d", code, nvr_ip, http_port)
 
     # ------------------------------------------------------------------
     # Step A: Validate the row
@@ -201,9 +201,9 @@ async def _sync_single_device(
 
     valid, reason = row.is_valid_for_sync()
     if not valid:
-        logger.warning("Skipping %s/%s — %s", site_code, nvr_ip, reason)
+        logger.warning("Skipping %s/%s — %s", code, nvr_ip, reason)
         return DeviceSyncResult(
-            site_code=site_code,
+            code=code,
             nvr_ip=nvr_ip,
             http_port=http_port,
             status="skipped",
@@ -232,36 +232,36 @@ async def _sync_single_device(
                 device_info = await client.get_device_info()
                 logger.info(
                     "ACTi device OK: site=%s ip=%s",
-                    site_code, nvr_ip,
+                    code, nvr_ip,
                 )
 
                 channels = await client.get_channels()
                 logger.info(
                     "ACTi channels found: site=%s ip=%s count=%d",
-                    site_code, nvr_ip, len(channels),
+                    code, nvr_ip, len(channels),
                 )
                 sync_status = "synced"
 
         except ActiConnectionError as exc:
             sync_status = "unreachable"
             sync_error = str(exc)
-            logger.warning("ACTi unreachable: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+            logger.warning("ACTi unreachable: site=%s ip=%s — %s", code, nvr_ip, exc)
 
         except ActiAuthError as exc:
             sync_status = "auth_error"
             sync_error = str(exc)
-            logger.warning("ACTi auth failed: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+            logger.warning("ACTi auth failed: site=%s ip=%s — %s", code, nvr_ip, exc)
 
         except ActiResponseError as exc:
             sync_status = "failed"
             sync_error = str(exc)
-            logger.error("ACTi response error: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+            logger.error("ACTi response error: site=%s ip=%s — %s", code, nvr_ip, exc)
 
         except Exception as exc:  # noqa: BLE001
             sync_status = "failed"
             sync_error = f"{type(exc).__name__}: {exc}"
             logger.exception(
-                "Unexpected error syncing ACTi site=%s ip=%s", site_code, nvr_ip
+                "Unexpected error syncing ACTi site=%s ip=%s", code, nvr_ip
             )
 
     else:
@@ -278,7 +278,7 @@ async def _sync_single_device(
                 device_info = await client.get_device_info()
                 logger.info(
                     "Device info OK: site=%s ip=%s model=%s serial=%s firmware=%s",
-                    site_code, nvr_ip,
+                    code, nvr_ip,
                     device_info.model,
                     device_info.serial_number,
                     device_info.firmware_version,
@@ -295,30 +295,30 @@ async def _sync_single_device(
 
                 logger.info(
                     "Channels found: site=%s ip=%s count=%d",
-                    site_code, nvr_ip, len(channels),
+                    code, nvr_ip, len(channels),
                 )
                 sync_status = "synced"
 
         except ISAPIConnectionError as exc:
             sync_status = "unreachable"
             sync_error = str(exc)
-            logger.warning("Device unreachable: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+            logger.warning("Device unreachable: site=%s ip=%s — %s", code, nvr_ip, exc)
 
         except ISAPIAuthError as exc:
             sync_status = "auth_error"
             sync_error = str(exc)
-            logger.warning("Auth failed: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+            logger.warning("Auth failed: site=%s ip=%s — %s", code, nvr_ip, exc)
 
         except ISAPIResponseError as exc:
             sync_status = "failed"
             sync_error = str(exc)
-            logger.error("ISAPI error: site=%s ip=%s — %s", site_code, nvr_ip, exc)
+            logger.error("ISAPI error: site=%s ip=%s — %s", code, nvr_ip, exc)
 
         except Exception as exc:  # noqa: BLE001
             sync_status = "failed"
             sync_error = f"{type(exc).__name__}: {exc}"
             logger.exception(
-                "Unexpected error syncing site=%s ip=%s", site_code, nvr_ip
+                "Unexpected error syncing site=%s ip=%s", code, nvr_ip
             )
 
     # ------------------------------------------------------------------
@@ -331,7 +331,7 @@ async def _sync_single_device(
         repo = DiscoveryRepository(db)
 
         nvr = await repo.upsert_nvr(
-            site_code=site_code,
+            code=code,
             branch_name=row.branch_name,
             nvr_ip=nvr_ip,
             http_port=http_port,
@@ -352,17 +352,17 @@ async def _sync_single_device(
 
         logger.debug(
             "Persisted: site=%s ip=%s nvr_id=%s channels_saved=%d",
-            site_code, nvr_ip, nvr.id, channels_saved,
+            code, nvr_ip, nvr.id, channels_saved,
         )
 
     except Exception as exc:  # noqa: BLE001
         await db.rollback()
         db_error = f"DB error: {type(exc).__name__}: {exc}"
         logger.error(
-            "Failed to persist site=%s ip=%s — %s", site_code, nvr_ip, db_error
+            "Failed to persist site=%s ip=%s — %s", code, nvr_ip, db_error
         )
         return DeviceSyncResult(
-            site_code=site_code,
+            code=code,
             nvr_ip=nvr_ip,
             http_port=http_port,
             status="failed",
@@ -374,7 +374,7 @@ async def _sync_single_device(
     # ------------------------------------------------------------------
 
     return DeviceSyncResult(
-        site_code=site_code,
+        code=code,
         nvr_ip=nvr_ip,
         http_port=http_port,
         status=sync_status,

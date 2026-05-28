@@ -85,7 +85,7 @@ function ChannelCard({ channel, nvr, onOpenStream }) {
         </div>
         <div className="meta-row">
           <span>Site</span>
-          <span className="mono">{nvr.site_code}</span>
+          <span className="mono">{nvr.code}</span>
         </div>
         {channel.ip_address && (
           <div className="meta-row">
@@ -134,7 +134,7 @@ function NvrGroupHeader({ nvr, channelCount }) {
       marginTop: '8px',
     }}>
       <span style={{ fontWeight: 700, fontSize: '1rem', color: '#111827' }}>
-        {nvr.branch_name || nvr.site_code}
+        {nvr.branch_name || nvr.code}
       </span>
       <span style={{ fontSize: '0.8rem', color: '#6b7280', fontFamily: 'monospace' }}>
         {nvr.nvr_ip}:{nvr.http_port}
@@ -224,7 +224,7 @@ export default function Dashboard({ user, onLogout }) {
           (ch.channel_name || '').toLowerCase().includes(q) ||
           (ch.channel_id || '').toLowerCase().includes(q) ||
           (ch.ip_address || '').toLowerCase().includes(q) ||
-          (g.nvr.site_code || '').toLowerCase().includes(q) ||
+          (g.nvr.code || '').toLowerCase().includes(q) ||
           (g.nvr.branch_name || '').toLowerCase().includes(q)
         ),
       })).filter(g => g.channels.length > 0)
@@ -254,9 +254,9 @@ export default function Dashboard({ user, onLogout }) {
             {nvrGroups.map(({ nvr, channels }) => (
               <li key={nvr.id} className={selectedNvrId === nvr.id ? 'active' : ''}>
                 <button className="branch-item" onClick={() => setSelectedNvrId(nvr.id)}>
-                  <div className="branch-name">{nvr.branch_name || nvr.site_code}</div>
+                  <div className="branch-name">{nvr.branch_name || nvr.code}</div>
                   <div className="branch-meta">
-                    <span className="code">{nvr.site_code}</span>
+                    <span className="code">{nvr.code}</span>
                     <span className="location">{channels.length} channels</span>
                   </div>
                 </button>

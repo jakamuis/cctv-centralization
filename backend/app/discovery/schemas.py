@@ -20,7 +20,7 @@ Design decisions:
 from __future__ import annotations
 
 from typing import List, Optional
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator
 import re
 
 
@@ -36,7 +36,6 @@ class CsvDeviceRow(BaseModel):
     Validators clean and coerce values before the sync engine uses them.
     """
 
-    site_code: Optional[str] = None
     branch_name: Optional[str] = None
     nvr_ip: Optional[str] = None
     http_port: Optional[str] = None
@@ -44,13 +43,12 @@ class CsvDeviceRow(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     enabled: Optional[str] = None
-    notes: Optional[str] = None
     vendor: Optional[str] = None     # "hikvision" (default) | "acti_snvr"
     timezone: Optional[str] = None   # "WIB" (UTC+7) | "WITA" (UTC+8) | "WIT" (UTC+9)
 
     # ---- field-level cleaners ----
 
-    @field_validator("site_code", "branch_name", "nvr_ip", "username", "notes", "vendor", "timezone", mode="before")
+    @field_validator("branch_name", "nvr_ip", "username", "vendor", "timezone", mode="before")
     @classmethod
     def strip_whitespace(cls, v):
         if isinstance(v, str):
@@ -83,7 +81,9 @@ class CsvDeviceRow(BaseModel):
 
     @property
     def is_enabled(self) -> bool:
-        """Return True when the enabled column is a truthy value."""
+        """Return True when the enabled column is truthy, or when absent (default enabled)."""
+        if self.enabled is None:
+            return True
         return self.enabled in ("true", "1", "yes", "y", "on")
 
     @property
@@ -107,9 +107,10 @@ class CsvDeviceRow(BaseModel):
         """Normalised vendor string — defaults to 'hikvision' when blank."""
         if self.vendor:
             v = self.vendor.lower().strip()
-            # Accept "acti" as shorthand for "acti_snvr"
-            if v == "acti":
+            if "acti" in v:
                 return "acti_snvr"
+            if "hik" in v:
+                return "hikvision"
             return v
         return "hikvision"
 
@@ -120,14 +121,21 @@ class CsvDeviceRow(BaseModel):
             return self.timezone.upper().strip()
         return "WIB"
 
+    @property
+    def code(self) -> str:
+        """Auto-generate a slug from branch_name (e.g. 'SIG Kendal 1' → 'sig-kendal-1')."""
+        if self.branch_name:
+            return re.sub(r"[^a-z0-9]+", "-", self.branch_name.lower()).strip("-")
+        return "unknown"
+
     def is_valid_for_sync(self) -> tuple[bool, str]:
         """
         Quick sanity check before attempting ISAPI connectivity.
 
         Returns (True, "") when valid, or (False, reason) when not.
         """
-        if not self.site_code:
-            return False, "Missing site_code"
+        if not self.branch_name:
+            return False, "Missing branch_name"
         if not self.nvr_ip:
             return False, "Missing nvr_ip"
         if not self.username:
@@ -225,7 +233,7 @@ class DeviceSyncResult(BaseModel):
     Outcome of syncing a single device row from the CSV.
     """
 
-    site_code: str
+    code: str
     nvr_ip: str
     http_port: int
     status: str                              # "synced" | "skipped" | "failed"

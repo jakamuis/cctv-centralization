@@ -37,7 +37,7 @@ function buildBranchesFromNvrs(nvrGroups) {
   const branchMap = new Map();
 
   nvrGroups.forEach(({ nvr, channels }) => {
-    const branchKey = nvr.branch_name || nvr.site_code || nvr.nvr_ip || "Unknown";
+    const branchKey = nvr.branch_name || nvr.code || nvr.nvr_ip || "Unknown";
     if (!branchMap.has(branchKey)) {
       branchMap.set(branchKey, {
         id: `branch-${branchKey}`,
@@ -231,7 +231,7 @@ export default function SitesExplorer() {
       online: cam.online,
       channel: cam.channel?.channel_id,
       ip: cam.channel?.ip_address,
-      site: { name: cam.nvr?.site_code },
+      site: { name: cam.nvr?.code },
       nvr: { name: cam.nvr?.branch_name || cam.nvr?.nvr_ip },
     });
   };

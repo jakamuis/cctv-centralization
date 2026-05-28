@@ -51,12 +51,26 @@ CSV_FETCH_TIMEOUT_SECONDS = 30
 
 # Expected column names (after normalisation).  Any sheet that contains at
 # least these columns will be accepted; extra columns are ignored.
-REQUIRED_COLUMNS = {"site_code", "nvr_ip", "username", "password", "enabled"}
+REQUIRED_COLUMNS = {"branch_name", "nvr_ip", "username", "password"}
+
+# Accept alternative column names from different CSV formats
+COLUMN_ALIASES: dict[str, str] = {
+    "branch": "branch_name",
+    "ip":     "nvr_ip",
+    "site":   "branch_name",
+    "name":   "branch_name",
+    "host":   "nvr_ip",
+}
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+def parse_csv_rows(raw_text: str) -> Tuple[List[CsvDeviceRow], List[str]]:
+    """Parse CSV text directly (no HTTP fetch). Used for file upload endpoint."""
+    return _parse_csv_text(raw_text)
+
 
 async def fetch_csv_rows(
     csv_url: str = DEFAULT_CSV_URL,
@@ -175,12 +189,14 @@ def _parse_csv_text(
         errors.append("CSV appears to be empty — no header row found")
         return rows, errors
 
-    # Normalise header names
-    normalised_headers = {
-        col.strip().lower(): col
-        for col in reader.fieldnames
-        if col  # skip None / empty fieldnames
-    }
+    # Normalise header names and apply aliases
+    normalised_headers = {}
+    for col in reader.fieldnames:
+        if not col:
+            continue
+        norm = col.strip().lower()
+        norm = COLUMN_ALIASES.get(norm, norm)
+        normalised_headers[norm] = col
 
     # Check required columns exist
     missing = REQUIRED_COLUMNS - set(normalised_headers.keys())
@@ -209,9 +225,9 @@ def _parse_csv_text(
             row = CsvDeviceRow(**normalised_row)
             rows.append(row)
             logger.debug(
-                "Line %d: parsed row site_code=%r nvr_ip=%r enabled=%r",
+                "Line %d: parsed row branch_name=%r nvr_ip=%r enabled=%r",
                 line_number,
-                row.site_code,
+                row.branch_name,
                 row.nvr_ip,
                 row.enabled,
             )

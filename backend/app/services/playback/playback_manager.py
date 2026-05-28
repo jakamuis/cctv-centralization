@@ -96,14 +96,12 @@ async def _register_go2rtc_stream(stream_name: str, rtsp_url: str) -> None:
         async with httpx.AsyncClient(timeout=GO2RTC_TIMEOUT) as client:
             response = await client.put(
                 api_url,
-                params={"name": stream_name},
-                content=rtsp_url,
-                headers={"Content-Type": "text/plain"},
+                params={"name": stream_name, "src": rtsp_url},
             )
     except httpx.RequestError as exc:
         raise Go2RTCError(f"Cannot reach go2rtc at {api_url}: {exc}") from exc
 
-    if not response.is_success:
+    if response.status_code not in (200, 201, 204):
         raise Go2RTCError(
             f"go2rtc stream registration failed: HTTP {response.status_code} — {response.text[:200]}"
         )

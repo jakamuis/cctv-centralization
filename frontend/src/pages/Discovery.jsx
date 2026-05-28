@@ -113,7 +113,7 @@ export default function Discovery() {
                   backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb',
                 }}>
                   <td style={{ padding: '10px 14px', fontWeight: 600, color: '#111827' }}>
-                    {nvr.site_code || '—'}
+                    {nvr.code || '—'}
                   </td>
                   <td style={{ padding: '10px 14px', color: '#374151' }}>
                     {nvr.branch_name || '—'}
