@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Read an ACTi SNVR live stream (multipart/x-mixed-replace with H264 parts)
+Read an ACTi SNVR stream (multipart/x-mixed-replace with H264 parts)
 and write clean H264 Annex B to stdout for go2rtc exec: source.
 
-Usage:  python3 acti_pipe.py <host> <channel> <user> <pass> [port]
+Usage (live):     python3 acti_pipe.py <host> <channel> <user> <pass> [port]
+Usage (playback): python3 acti_pipe.py <host> <path> <user> <pass> [port]
 
-go2rtc go2rtc.yaml entry:
-  cam_name:
-    - "exec:python3 /scripts/acti_pipe.py 192.168.x.x 1 admin pass#video=h264"
+  <channel> is a digit → live URL /virtualcamera/channel{N}?media&streamid=0
+  <path> starts with / → used verbatim as the HTTP request path
+
+go2rtc go2rtc.yaml entries:
+  live:     "exec:python3 /scripts/acti_pipe.py 192.168.x.x 1 admin pass#video=h264"
+  playback: "exec:python3 /scripts/acti_pipe.py 192.168.x.x /playback/?cmd=1&channel=1&sec=1234567890&usec=0&mode=0&i_only=0 admin pass#video=h264"
 """
 import sys
 import socket
@@ -15,15 +19,20 @@ import base64
 import re
 
 def main():
-    host    = sys.argv[1]
-    channel = sys.argv[2]
+    host           = sys.argv[1]
+    channel_or_path = sys.argv[2]
     user    = sys.argv[3]
     pwd     = sys.argv[4]
     port    = int(sys.argv[5]) if len(sys.argv) > 5 else 80
 
+    if channel_or_path.isdigit():
+        path = f'/virtualcamera/channel{channel_or_path}?media&streamid=0'
+    else:
+        path = channel_or_path
+
     b64 = base64.b64encode(f'{user}:{pwd}'.encode()).decode()
     req = (
-        f'GET /virtualcamera/channel{channel}?media&streamid=0 HTTP/1.0\r\n'
+        f'GET {path} HTTP/1.0\r\n'
         f'Host: {host}\r\n'
         f'Authorization: Basic {b64}\r\n'
         f'Connection: keep-alive\r\n'

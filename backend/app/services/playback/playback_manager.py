@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.discovered_nvr import DiscoveredNVR
 from app.models.playback_session import PlaybackSession
+from app.services.playback.acti_playback import build_playback_http_url as build_acti_playback_url
 from app.services.playback.hikvision_playback import build_playback_rtsp_url
 from app.services.playback.playback_session import (
     create_session,
@@ -95,7 +96,9 @@ async def _register_go2rtc_stream(stream_name: str, rtsp_url: str) -> None:
         async with httpx.AsyncClient(timeout=GO2RTC_TIMEOUT) as client:
             response = await client.put(
                 api_url,
-                params={"name": stream_name, "src": rtsp_url},
+                params={"name": stream_name},
+                content=rtsp_url,
+                headers={"Content-Type": "text/plain"},
             )
     except httpx.RequestError as exc:
         raise Go2RTCError(f"Cannot reach go2rtc at {api_url}: {exc}") from exc
@@ -172,16 +175,27 @@ async def create_playback_session(
 
     stream_name = _build_stream_name(nvr.id, channel, start_time)
 
-    # Build the authenticated RTSP URL — never sent to frontend
-    rtsp_url = build_playback_rtsp_url(
-        nvr_ip=nvr.nvr_ip,
-        rtsp_port=nvr.rtsp_port,
-        username=nvr.username,
-        password=nvr.password,
-        channel=channel,
-        start_time=start_time,
-        end_time=end_time,
-    )
+    # Build the authenticated source URL — never sent to frontend
+    vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
+    if vendor == "acti_snvr":
+        rtsp_url = build_acti_playback_url(
+            nvr_ip=nvr.nvr_ip,
+            http_port=nvr.http_port,
+            username=nvr.username,
+            password=nvr.password,
+            channel=channel,
+            start_time=start_time,
+        )
+    else:
+        rtsp_url = build_playback_rtsp_url(
+            nvr_ip=nvr.nvr_ip,
+            rtsp_port=nvr.rtsp_port,
+            username=nvr.username,
+            password=nvr.password,
+            channel=channel,
+            start_time=start_time,
+            end_time=end_time,
+        )
 
     # Register in go2rtc
     await _register_go2rtc_stream(stream_name, rtsp_url)

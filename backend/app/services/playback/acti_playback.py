@@ -70,33 +70,28 @@ def build_playback_http_url(
     i_only: int = 0,
 ) -> str:
     """
-    Build the go2rtc FFmpeg source URL for ACTi SNVR recording playback.
+    Build the go2rtc exec: source for ACTi SNVR recording playback.
 
-    The `sec` parameter is a Unix timestamp (UTC).  The NVR seeks to that
-    position in its recording index and streams from there.
-
-    Parameters
-    ----------
-    nvr_ip, http_port : NVR address
-    username, password : credentials
-    channel : 1-based channel number
-    start_time : playback start (UTC datetime)
-    i_only : 1 = I-frames only (fast seek), 0 = normal playback
+    Uses the same acti_pipe.py script as live streams — passing the playback
+    path directly so the script fetches from /playback/ instead of /virtualcamera/.
 
     Returns
     -------
     str
         go2rtc stream source string, e.g.:
-        "ffmpeg:http://admin:pass@192.168.15.200:80/playback/?cmd=1&channel=1&sec=1748217600&usec=0&mode=0&i_only=0#video=h264"
+        "exec:python3 /scripts/acti_pipe.py 192.168.15.200 /playback/?cmd=1&channel=1&sec=1748217600&usec=0&mode=0&i_only=0 admin 123456#video=h264"
     """
     if start_time.tzinfo is None:
         start_time = start_time.replace(tzinfo=timezone.utc)
 
     unix_ts = int(start_time.timestamp())
-    creds = f"{quote(username, safe='')}:{quote(password, safe='')}"
     path = (
         f"/playback/?cmd=1&channel={channel}"
         f"&sec={unix_ts}&usec=0&mode=0&i_only={i_only}"
     )
-    http_url = f"http://{creds}@{nvr_ip}:{http_port}{path}"
-    return f"ffmpeg:{http_url}#video=h264"
+    port_arg = f" {http_port}" if http_port != 80 else ""
+    return (
+        f"exec:python3 /scripts/acti_pipe.py"
+        f" {nvr_ip} {path} {quote(username, safe='')} {quote(password, safe='')}{port_arg}"
+        f"#video=h264"
+    )
