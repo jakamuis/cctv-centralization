@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import DashboardView from "./DashboardView";
 import {
   LayoutDashboard,
   Monitor,
@@ -124,13 +125,13 @@ function AppSidebar({ activeNav, onNavigate, user, onLogout }) {
     return (
       <button
         onClick={() => onNavigate(label)}
-        className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium mb-0.5 transition-colors ${
+        className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-[15px] font-medium mb-0.5 transition-colors ${
           isActive
             ? "bg-accent/50 text-primary"
             : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
         }`}
       >
-        <Icon size={16} className="flex-shrink-0" />
+        <Icon size={18} className="flex-shrink-0" />
         {label}
       </button>
     );
@@ -139,18 +140,18 @@ function AppSidebar({ activeNav, onNavigate, user, onLogout }) {
   return (
     <aside className="w-52 flex flex-col border-r border-border bg-[#0f1623] flex-shrink-0">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-border">
-        <div className="w-7 h-7 bg-primary rounded flex items-center justify-center flex-shrink-0">
-          <Camera size={15} className="text-white" />
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+        <div className="w-8 h-8 bg-primary rounded flex items-center justify-center flex-shrink-0">
+          <Camera size={17} className="text-white" />
         </div>
         <span className="text-sm font-semibold tracking-wide text-foreground">SAMATOR</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2">
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
         {mainNav.length > 0 && (
           <>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-2 mb-1.5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest px-2 mb-2">
               Dashboard
             </p>
             {mainNav.map(({ icon, label }) => (
@@ -161,7 +162,7 @@ function AppSidebar({ activeNav, onNavigate, user, onLogout }) {
 
         {mgmtNav.length > 0 && (
           <>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-2 mb-1.5 mt-5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest px-2 mb-2 mt-6">
               Management
             </p>
             {mgmtNav.map(({ icon, label }) => (
@@ -173,7 +174,7 @@ function AppSidebar({ activeNav, onNavigate, user, onLogout }) {
 
       {/* Bottom nav items (e.g. Settings — admin only) */}
       {btmNav.length > 0 && (
-        <div className="px-2 py-3 border-t border-border space-y-0.5">
+        <div className="px-3 py-3 border-t border-border space-y-0.5">
           {btmNav.map(({ icon, label }) => (
             <NavBtn key={label} icon={icon} label={label} />
           ))}
@@ -181,25 +182,25 @@ function AppSidebar({ activeNav, onNavigate, user, onLogout }) {
       )}
 
       {/* Footer: user info + logout */}
-      <div className="px-3 py-2.5 border-t border-border">
-        <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded bg-primary/30 border border-primary/40 flex items-center justify-center text-[10px] font-semibold text-primary flex-shrink-0">
+      <div className="px-4 py-3 border-t border-border">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded bg-primary/30 border border-primary/40 flex items-center justify-center text-xs font-semibold text-primary flex-shrink-0">
             {avatarLetter(user?.username)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground truncate">
+            <p className="text-sm font-medium text-foreground truncate">
               {user?.username || "User"}
             </p>
-            <p className="text-[10px] text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {roleBadge(user?.role)}
             </p>
           </div>
           <button
             onClick={onLogout}
             title="Sign out"
-            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0"
+            className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0"
           >
-            <LogOut size={13} />
+            <LogOut size={15} />
           </button>
         </div>
       </div>
@@ -1044,7 +1045,7 @@ function TopHeader({ activeNav, user }) {
 // ─── Root App ─────────────────────────────────────────────────────────────────
 
 export default function MonitoringApp({ user, onLogout }) {
-  const [activeNav, setActiveNav] = useState("Monitoring");
+  const [activeNav, setActiveNav] = useState("Dashboard");
 
   return (
     <div className="dark w-screen h-screen flex flex-col overflow-hidden bg-background text-foreground font-['Inter',sans-serif]">
@@ -1059,7 +1060,9 @@ export default function MonitoringApp({ user, onLogout }) {
         />
 
         <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
-          {activeNav === "Monitoring" ? (
+          {activeNav === "Dashboard" ? (
+            <DashboardView />
+          ) : activeNav === "Monitoring" ? (
             <MonitoringView />
           ) : activeNav === "Playback" ? (
             <PlaybackView />
