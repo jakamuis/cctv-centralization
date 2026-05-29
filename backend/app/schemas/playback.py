@@ -109,17 +109,22 @@ class PlaybackSessionResponse(BaseModel):
     """
     Response for POST /api/playback/session.
 
-    stream_url is the relative WebSocket path the frontend uses to
-    connect to the go2rtc MSE/WebRTC stream — same protocol as live view.
+    For Hikvision devices: stream_url is the go2rtc WebSocket path and
+    is_prefetched is False — the frontend uses the MSE player.
+
+    For ACTi SNVR devices: is_prefetched is True, stream_url points to
+    the backend's /playback/session/{id}/stream HTTP endpoint, and the
+    frontend uses a native <video> element for reliable playback.
 
     Credentials are NEVER included in this response.
     """
 
     session_id: UUID
-    stream_name: str = Field(..., description="go2rtc stream key")
-    stream_url: str = Field(
-        ...,
-        description="Relative WebSocket URL: /go2rtc/api/ws?src=<stream_name>",
+    stream_name: str = Field(..., description="go2rtc stream key (or session ID for prefetched)")
+    stream_url: str = Field(..., description="Playback stream URL")
+    is_prefetched: bool = Field(
+        False,
+        description="True when recording was pre-downloaded to server (ACTi SNVR)",
     )
     expires_at: datetime
     device_id: UUID

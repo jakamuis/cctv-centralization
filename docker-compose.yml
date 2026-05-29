@@ -34,6 +34,7 @@ services:
     volumes:
       - ./backend:/app
       - ./go2rtc/go2rtc.yaml:/go2rtc.yaml:rw
+      - ./go2rtc/scripts:/scripts:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
     depends_on:
@@ -115,7 +116,9 @@ services:
       - internal
 
   go2rtc:
-    image: ghcr.io/alexxit/go2rtc:latest
+    build:
+      context: ./go2rtc
+      dockerfile: Dockerfile
     container_name: cctv_go2rtc
     restart: unless-stopped
     environment:

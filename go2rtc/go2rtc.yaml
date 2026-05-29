@@ -3,113 +3,113 @@ api:
 streams:
   # --- sig-kendal-1 (SIG Kendal 1, 192.168.2.100) ---
   sig-kendal-1_1:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/101
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/101#video=h264
   sig-kendal-1_2:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/201
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/201#video=h264
   sig-kendal-1_3:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/301
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/301#video=h264
   sig-kendal-1_4:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/401
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/401#video=h264
   sig-kendal-1_5:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/501
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/501#video=h264
   sig-kendal-1_6:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/601
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/601#video=h264
   sig-kendal-1_7:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/701
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/701#video=h264
   sig-kendal-1_8:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/801
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/801#video=h264
   sig-kendal-1_9:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/901
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/901#video=h264
   sig-kendal-1_10:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1001
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1001#video=h264
   sig-kendal-1_11:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1101
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1101#video=h264
   sig-kendal-1_12:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1201
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1201#video=h264
   sig-kendal-1_13:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1301
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1301#video=h264
   sig-kendal-1_19:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1901
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/1901#video=h264
   sig-kendal-1_20:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2001
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2001#video=h264
   sig-kendal-1_21:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2101
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2101#video=h264
   sig-kendal-1_22:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2201
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2201#video=h264
   sig-kendal-1_23:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2301
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2301#video=h264
   sig-kendal-1_24:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2401
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2401#video=h264
   sig-kendal-1_25:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2501
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2501#video=h264
   sig-kendal-1_26:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2601
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2601#video=h264
   sig-kendal-1_27:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2701
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2701#video=h264
   sig-kendal-1_28:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2801
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2801#video=h264
   sig-kendal-1_29:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2901
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/2901#video=h264
   sig-kendal-1_30:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/3001
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/3001#video=h264
   sig-kendal-1_31:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/3101
+    - ffmpeg:rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/3101#video=h264
 
   # --- sig-medan (SIG Medan, 192.168.152.101, remote VPN) ---
   sig-medan_1:
-    - rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/101
+    - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1#video=h264
   sig-medan_2:
-    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/201#video=h264#audio=pcmu"
+    - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/2#video=h264
   sig-medan_3:
-    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/301#video=h264#audio=pcmu"
+    - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/3#video=h264
   sig-medan_4:
-    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/401#video=h264#audio=pcmu"
+    - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/4#video=h264
   sig-medan_5:
-    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/501#video=h264#audio=pcmu"
+    - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/5#video=h264
   sig-medan_6:
-    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/601#video=h264#audio=pcmu"
+    - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/6#video=h264
   sig-medan_7:
-    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/701#video=h264#audio=pcmu"
+    - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/7#video=h264
   sig-medan_8:
     - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/801#video=h264#audio=pcmu"
   sig-medan_11:
-    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1101#video=h264#audio=pcmu"
+    - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/11#video=h264
   sig-medan_12:
-    - "ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/1201#video=h264#audio=pcmu"
+    - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/12#video=h264
 
   # --- sig-pier (SIG PIER, 192.168.15.200, ACTi SNVR) ---
   sig-pier_1:
-    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 1 admin 123456#video=h264"
+    - exec:python3 /scripts/acti_pipe.py 192.168.15.200 1 admin 123456#video=h264
   sig-pier_2:
-    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 2 admin 123456#video=h264"
+    - exec:python3 /scripts/acti_pipe.py 192.168.15.200 2 admin 123456#video=h264
   sig-pier_3:
-    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 3 admin 123456#video=h264"
+    - exec:python3 /scripts/acti_pipe.py 192.168.15.200 3 admin 123456#video=h264
   sig-pier_4:
-    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 4 admin 123456#video=h264"
+    - exec:python3 /scripts/acti_pipe.py 192.168.15.200 4 admin 123456#video=h264
   sig-pier_5:
-    - "exec:python3 /scripts/acti_pipe.py 192.168.15.200 5 admin 123456#video=h264"
+    - exec:python3 /scripts/acti_pipe.py 192.168.15.200 5 admin 123456#video=h264
   depo-pangkalan-bun_1:
     - ffmpeg:rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/101#video=h264
   depo-pangkalan-bun_2:
-    - rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/201
+    - ffmpeg:rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/201#video=h264
   sandana-baswara-gas_4:
-    - ffmpeg:http://admin:123456@10.70.207.200:80/virtualcamera/channel4?media&streamid=0#video=h264
+    - exec:python3 /scripts/acti_pipe.py 10.70.207.200 4 admin 123456#video=h264
   sandana-baswara-gas_3:
-    - ffmpeg:http://admin:123456@10.70.207.200:80/virtualcamera/channel3?media&streamid=0#video=h264
+    - exec:python3 /scripts/acti_pipe.py 10.70.207.200 3 admin 123456#video=h264
   sig-kendal_1:
     - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/101
   sig-lampung-3_3:
-    - rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/301
+    - ffmpeg:rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/301#video=h264
   sig-lampung-3_2:
-    - rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/201
+    - ffmpeg:rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/201#video=h264
   sig-lampung-3_1:
-    - rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/101
+    - ffmpeg:rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/101#video=h264
   smt-cilamaya_1:
     - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/1#video=h264
   smt-cilamaya_11:
-    - rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/1101
+    - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/11#video=h264
   depo-pangkalan-bun_3:
-    - rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/301
+    - ffmpeg:rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/301#video=h264
   test_depo-pangkalan-bun_1:
     - rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/101
   test_sandana-baswara-gas_1:
@@ -151,13 +151,13 @@ streams:
   test_smt-cilamaya_1:
     - rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/101
   sandana-baswara-gas_1:
-    - ffmpeg:http://admin:123456@10.70.207.200:80/virtualcamera/channel1?media&streamid=0#video=h264
+    - exec:python3 /scripts/acti_pipe.py 10.70.207.200 1 admin 123456#video=h264
   sgi-cilegon_2:
-    - rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/201
+    - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/2#video=h264
   test_cilegon_ch1:
     - ffmpeg:rtsp://sgicilegon:samator#2017@10.70.159.241:554/Streaming/Channels/1#video=h264
   sgi-kutai_1:
-    - ffmpeg:http://admin:123456@10.70.155.200:80/virtualcamera/channel1?media&streamid=0#video=h264
+    - exec:python3 /scripts/acti_pipe.py 10.70.155.200 1 admin 123456#video=h264
   sgi-lubuk-gaung-dumai_3:
     - ffmpeg:rtsp://admin:Samator01@192.168.94.200:554/Streaming/Channels/301#video=h264
   sgi-cikupa_1:
@@ -167,16 +167,88 @@ streams:
   sgi-cikupa_7:
     - ffmpeg:rtsp://admin:samator%4088@192.168.74.200:554/Streaming/Channels/701#video=h264
   sgi-tuban_1:
-    - ffmpeg:http://admin:123456@10.70.141.200:80/virtualcamera/channel1?media&streamid=0#video=h264
+    - exec:python3 /scripts/acti_pipe.py 10.70.141.200 1 admin 123456#video=h264
   sgi-tuban_2:
-    - ffmpeg:http://admin:123456@10.70.141.200:80/virtualcamera/channel2?media&streamid=0#video=h264
+    - exec:python3 /scripts/acti_pipe.py 10.70.141.200 2 admin 123456#video=h264
   sgi-sibolga_1:
-    - ffmpeg:http://sgisibolga:samator%232017@192.168.93.200:80/virtualcamera/channel1?media&streamid=0#video=h264
+    - exec:python3 /scripts/acti_pipe.py 192.168.93.200 1 sgisibolga samator%232017#video=h264
   sgi-sibolga_2:
-    - ffmpeg:http://sgisibolga:samator%232017@192.168.93.200:80/virtualcamera/channel2?media&streamid=0#video=h264
+    - exec:python3 /scripts/acti_pipe.py 192.168.93.200 2 sgisibolga samator%232017#video=h264
   sgi-malang_2:
-    - ffmpeg:http://adminmalang:123456@10.70.139.200:80/virtualcamera/channel2?media&streamid=0#video=h264
+    - exec:python3 /scripts/acti_pipe.py 10.70.139.200 2 adminmalang 123456#video=h264
   smt-cilamaya_10:
     - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/10#video=h264
   depo-pangkalan-bun_4:
     - ffmpeg:rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/401#video=h264
+  sandana-baswara-gas_2:
+    - exec:python3 /scripts/acti_pipe.py 10.70.207.200 2 admin 123456#video=h264
+  sgi-boyolali_3:
+    - exec:python3 /scripts/acti_pipe.py 192.168.17.200 3 admin 123456#video=h264
+  sgi-boyolali_1:
+    - exec:python3 /scripts/acti_pipe.py 192.168.17.200 1 admin 123456#video=h264
+  sgi-boyolali_4:
+    - exec:python3 /scripts/acti_pipe.py 192.168.17.200 4 admin 123456#video=h264
+  sgi-boyolali_2:
+    - exec:python3 /scripts/acti_pipe.py 192.168.17.200 2 admin 123456#video=h264
+  sgi-boyolali_5:
+    - exec:python3 /scripts/acti_pipe.py 192.168.17.200 5 admin 123456#video=h264
+  sgi-boyolali_6:
+    - exec:python3 /scripts/acti_pipe.py 192.168.17.200 6 admin 123456#video=h264
+  sgi-malang_1:
+    - exec:python3 /scripts/acti_pipe.py 10.70.139.200 1 adminmalang 123456#video=h264
+  sgi-malang_4:
+    - exec:python3 /scripts/acti_pipe.py 10.70.139.200 4 adminmalang 123456#video=h264
+  sgi-malang_3:
+    - exec:python3 /scripts/acti_pipe.py 10.70.139.200 3 adminmalang 123456#video=h264
+  sgi-malang_5:
+    - exec:python3 /scripts/acti_pipe.py 10.70.139.200 5 adminmalang 123456#video=h264
+  sgi-malang_6:
+    - exec:python3 /scripts/acti_pipe.py 10.70.139.200 6 adminmalang 123456#video=h264
+  depo-pangkalan-bun_5:
+    - ffmpeg:rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/501#video=h264
+  sgi-cikupa_5:
+    - ffmpeg:rtsp://admin:samator%4088@192.168.74.200:554/Streaming/Channels/501#video=h264
+  sgi-cikupa_3:
+    - ffmpeg:rtsp://admin:samator%4088@192.168.74.200:554/Streaming/Channels/301#video=h264
+  sgi-cikupa_4:
+    - ffmpeg:rtsp://admin:samator%4088@192.168.74.200:554/Streaming/Channels/401#video=h264
+  sgi-cikupa_6:
+    - ffmpeg:rtsp://admin:samator%4088@192.168.74.200:554/Streaming/Channels/601#video=h264
+  sgi-cikupa_9:
+    - ffmpeg:rtsp://admin:samator%4088@192.168.74.200:554/Streaming/Channels/901#video=h264
+  sgi-cikupa_8:
+    - ffmpeg:rtsp://admin:samator%4088@192.168.74.200:554/Streaming/Channels/801#video=h264
+  sgi-cilegon_1:
+    - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/1#video=h264
+  sgi-cilegon_4:
+    - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/4#video=h264
+  sgi-cilegon_10:
+    - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/10#video=h264
+  sgi-cilegon_3:
+    - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/3#video=h264
+  sgi-cilegon_6:
+    - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/6#video=h264
+  sgi-cilegon_7:
+    - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/7#video=h264
+  sgi-cilegon_5:
+    - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/5#video=h264
+  sgi-cilegon_8:
+    - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/8#video=h264
+  sig-lampung-3_6:
+    - ffmpeg:rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/601#video=h264
+  sig-lampung-3_4:
+    - ffmpeg:rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/401#video=h264
+  sig-lampung-3_5:
+    - ffmpeg:rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/501#video=h264
+  smt-cilamaya_12:
+    - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/12#video=h264
+  smt-cilamaya_13:
+    - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/13#video=h264
+  smt-cilamaya_14:
+    - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/14#video=h264
+  smt-cilamaya_15:
+    - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/15#video=h264
+  smt-cilamaya_16:
+    - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/16#video=h264
+  smt-cilamaya_2:
+    - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/2#video=h264

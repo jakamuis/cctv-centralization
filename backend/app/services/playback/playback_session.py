@@ -57,6 +57,7 @@ async def create_session(
     stream_name: str,
     created_by: Optional[int] = None,
     ttl_seconds: int = DEFAULT_SESSION_TTL_SECONDS,
+    temp_file_path: Optional[str] = None,
 ) -> PlaybackSession:
     """
     Persist a new PlaybackSession to the database and register it in Redis.
@@ -81,8 +82,8 @@ async def create_session(
     await db.commit()
     await db.refresh(session)
 
-    # Mirror in Redis for fast expiry checks
-    await _redis_register_session(session, ttl_seconds)
+    # Mirror in Redis for fast expiry checks (temp_file_path stored for cleanup)
+    await _redis_register_session(session, ttl_seconds, temp_file_path=temp_file_path)
 
     logger.info(
         "Created playback session %s: device=%s ch=%d stream=%r expires=%s",
@@ -172,6 +173,7 @@ async def extend_session_ttl(
 async def _redis_register_session(
     session: PlaybackSession,
     ttl_seconds: int,
+    temp_file_path: Optional[str] = None,
 ) -> None:
     """Store session metadata in Redis with TTL for fast expiry detection."""
     redis = get_redis()
@@ -182,9 +184,19 @@ async def _redis_register_session(
         "channel": str(session.channel),
         "expires_at": session.expires_at.isoformat(),
     }
+    if temp_file_path:
+        mapping["temp_file_path"] = temp_file_path
     await redis.hset(key, mapping=mapping)
     await redis.expire(key, ttl_seconds)
     await redis.sadd("playback:active", str(session.id))
+
+
+async def get_session_temp_file_path(session_id: str) -> Optional[str]:
+    """Return the cached temp file path for a session, or None if not set."""
+    redis = get_redis()
+    key = f"playback:session:{session_id}"
+    value = await redis.hget(key, "temp_file_path")
+    return value if value else None
 
 
 async def _redis_unregister_session(session_id: str) -> None:

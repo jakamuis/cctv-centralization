@@ -26,8 +26,24 @@ go2rtc source format:
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import os
+import sys
+import uuid
 from datetime import datetime, timezone
 from urllib.parse import quote
+
+import httpx
+
+logger = logging.getLogger(__name__)
+
+TEMP_DIR = os.environ.get("PLAYBACK_CACHE_DIR", "/tmp/playback_cache")
+
+# Hard cap: never download more than this many seconds in one session
+MAX_PREFETCH_SECONDS = int(os.environ.get("PLAYBACK_MAX_PREFETCH_SECONDS", 3600))
+# Wall-clock timeout for the download subprocess (seconds)
+PREFETCH_WALL_TIMEOUT = int(os.environ.get("PLAYBACK_PREFETCH_WALL_TIMEOUT", 600))
 
 
 def build_live_stream_url(
@@ -92,3 +108,179 @@ def build_playback_http_url(
         f" {quote(username, safe='')} {quote(password, safe='')}{port_arg}"
         f"#video=h264"
     )
+
+
+async def download_acti_recording(
+    nvr_ip: str,
+    http_port: int,
+    username: str,
+    password: str,
+    channel: int,
+    start_time: datetime,
+    end_time: datetime,
+) -> str:
+    """
+    Download an ACTi SNVR recording to a server-side MP4 file.
+
+    Pipes: acti_pipe.py --playback  →  ffmpeg  →  /tmp/playback_cache/{uuid}.mp4
+
+    The ffmpeg -t flag caps output at the requested window duration so the
+    download stops automatically even if the device keeps streaming.
+
+    Returns the absolute path to the written MP4 file.
+    Raises RuntimeError on subprocess failure or timeout.
+    """
+    os.makedirs(TEMP_DIR, exist_ok=True)
+
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=timezone.utc)
+    if end_time.tzinfo is None:
+        end_time = end_time.replace(tzinfo=timezone.utc)
+
+    unix_ts = int(start_time.timestamp())
+    duration = min(
+        int((end_time - start_time).total_seconds()),
+        MAX_PREFETCH_SECONDS,
+    )
+
+    file_id = uuid.uuid4().hex[:16]
+    out_path = os.path.join(TEMP_DIR, f"pb_{file_id}.mp4")
+
+    pipe_args = ["--playback", nvr_ip, str(channel), str(unix_ts), username, password]
+    if http_port != 80:
+        pipe_args.append(str(http_port))
+
+    # Use a real OS pipe so both subprocesses share a kernel pipe buffer.
+    # asyncio.StreamReader has no fileno() and cannot be passed as stdin/stdout
+    # between two create_subprocess_exec calls directly.
+    r_fd, w_fd = os.pipe()
+
+    try:
+        pipe_proc = await asyncio.create_subprocess_exec(
+            sys.executable, "/scripts/acti_pipe.py", *pipe_args,
+            stdout=w_fd,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        os.close(r_fd)
+        os.close(w_fd)
+        raise RuntimeError("acti_pipe.py not found at /scripts/acti_pipe.py — check backend volume mounts")
+
+    # Parent closes write end — acti_pipe.py owns it; ffmpeg sees EOF when it exits.
+    os.close(w_fd)
+
+    try:
+        ffmpeg_proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y",
+            "-t", str(duration),
+            "-f", "h264", "-i", "pipe:0",
+            "-c:v", "copy",
+            "-movflags", "faststart",
+            out_path,
+            stdin=r_fd,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        # Python subprocess closes r_fd in the parent after fork — don't close again.
+    except FileNotFoundError:
+        os.close(r_fd)
+        pipe_proc.kill()
+        await pipe_proc.wait()
+        raise RuntimeError("ffmpeg not found — install ffmpeg in the backend container")
+
+    logger.info(
+        "ACTi prefetch started: %s ch%s t=%d duration=%ds → %s",
+        nvr_ip, channel, unix_ts, duration, out_path,
+    )
+
+    try:
+        await asyncio.wait_for(ffmpeg_proc.wait(), timeout=PREFETCH_WALL_TIMEOUT)
+    except asyncio.TimeoutError:
+        ffmpeg_proc.kill()
+        logger.warning("ACTi prefetch timed out: %s ch%s", nvr_ip, channel)
+        raise RuntimeError(
+            f"Recording download timed out after {PREFETCH_WALL_TIMEOUT}s "
+            f"— try a shorter time window"
+        )
+    finally:
+        try:
+            pipe_proc.kill()
+        except ProcessLookupError:
+            pass
+        await pipe_proc.wait()
+
+    if not os.path.exists(out_path) or os.path.getsize(out_path) < 1024:
+        raise RuntimeError("Recording download produced no data — device may have no recording at this time")
+
+    size_mb = os.path.getsize(out_path) / (1024 * 1024)
+    logger.info("ACTi prefetch complete: %s → %.1f MB", out_path, size_mb)
+    return out_path
+
+
+async def probe_playback_available(
+    nvr_ip: str,
+    http_port: int,
+    username: str,
+    password: str,
+    channel: int,
+    start_time: datetime,
+    timeout: float = 4.0,
+) -> bool:
+    """
+    Quick check: does this ACTi SNVR have recordings accessible at start_time?
+
+    Sends a GET to /playback/ and checks for a multipart response header.
+    Closes the connection immediately after the headers are received — no
+    video data is downloaded.
+
+    Returns True if the device replies HTTP 200 with a multipart content-type
+    (indicating recording data is present), False for any other outcome.
+    """
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=timezone.utc)
+
+    unix_ts = int(start_time.timestamp())
+    path = f"/playback/?cmd=1&channel={channel}&sec={unix_ts}&usec=0&mode=0&i_only=0"
+    url = f"http://{nvr_ip}:{http_port}{path}"
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            async with client.stream(
+                "GET",
+                url,
+                auth=(username, password),
+                headers={"Connection": "close"},
+            ) as response:
+                if response.status_code != 200:
+                    logger.debug(
+                        "ACTi playback probe: HTTP %d from %s ch%s t=%d",
+                        response.status_code, nvr_ip, channel, unix_ts,
+                    )
+                    return False
+                content_type = response.headers.get("content-type", "")
+                if "multipart" not in content_type.lower():
+                    return False
+
+                # Device always returns 200 + multipart header even when there
+                # is no recording — wait for at least one Content-Length line
+                # inside a part header to confirm real data exists.
+                buf = b""
+                async for chunk in response.aiter_bytes(chunk_size=4096):
+                    buf += chunk
+                    if b"Content-Length:" in buf or b"content-length:" in buf:
+                        logger.debug(
+                            "ACTi playback probe: %s ch%s t=%d → has real data",
+                            nvr_ip, channel, unix_ts,
+                        )
+                        return True
+                    if len(buf) > 8192:
+                        break
+
+                logger.debug(
+                    "ACTi playback probe: %s ch%s t=%d → multipart but no data parts",
+                    nvr_ip, channel, unix_ts,
+                )
+                return False
+    except Exception as exc:
+        logger.debug("ACTi playback probe failed for %s ch%s: %s", nvr_ip, channel, exc)
+        return False

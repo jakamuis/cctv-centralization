@@ -22,7 +22,10 @@ import {
   Filter,
   SortAsc,
   ChevronRight,
+  ChevronLeft,
   LogOut,
+  LayoutGrid,
+  Square,
 } from "lucide-react";
 import { discoveryApi } from "../api";
 import PlaybackView from "./Playback";
@@ -545,13 +548,67 @@ function MsePlayer({ streamName }) {
   );
 }
 
+// ─── Grid Cell ────────────────────────────────────────────────────────────────
+// Self-contained cell that registers its own stream and plays it.
+
+function GridCell({ camera, branch }) {
+  const [streamName, setStreamName] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!camera || !branch) return;
+    setStreamName(null);
+    setLoading(true);
+    setFailed(false);
+    discoveryApi
+      .startChannelStream(branch.id, camera.channel_id)
+      .then((res) => {
+        if (res?.stream_name) setStreamName(res.stream_name);
+        else setFailed(true);
+      })
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
+  }, [camera?.id, branch?.id]);
+
+  const camName = camera?.name || `Camera ${camera?.id}`;
+  const isOnline = camera?.status === "online";
+
+  return (
+    <div className="relative bg-black rounded overflow-hidden border border-border">
+      {streamName ? (
+        <MsePlayer key={streamName} streamName={streamName} />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <Camera size={18} className="text-muted-foreground" />
+          {loading ? (
+            <p className="text-[10px] text-muted-foreground">Connecting…</p>
+          ) : failed ? (
+            <p className="text-[10px] text-red-400">Unavailable</p>
+          ) : null}
+        </div>
+      )}
+      {/* Name overlay */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5 pointer-events-none">
+        <div className="flex items-center gap-1.5">
+          <StatusDot status={isOnline ? "online" : "offline"} />
+          <span className="text-[10px] text-white font-medium truncate">{camName}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Live Preview Pane ────────────────────────────────────────────────────────
 // Split into two sub-columns:
 //   Left  (flex-1): compact video player
 //   Right (w-72):   camera info panel
 
-function LivePreviewPane({ camera, branch, streamName, streamLoading }) {
+function LivePreviewPane({ camera, branch, streamName, streamLoading, cameras }) {
   const [streamLoaded, setStreamLoaded] = useState(false);
+  const [viewMode,     setViewMode]     = useState("grid"); // "single" | "grid"
+  const [gridCols,     setGridCols]     = useState(2);        // 2 → 2×2, 3 → 3×3
+  const [gridPage,     setGridPage]     = useState(0);
 
   // Reset preview state whenever the selected camera changes
   useEffect(() => {
@@ -562,6 +619,11 @@ function LivePreviewPane({ camera, branch, streamName, streamLoading }) {
   useEffect(() => {
     if (streamName) setStreamLoaded(true);
   }, [streamName]);
+
+  // Reset page when branch or grid size changes
+  useEffect(() => {
+    setGridPage(0);
+  }, [branch?.id, gridCols]);
 
   const camName    = camera?.name || camera?.stream_name || "—";
   const branchName = branch?.name || branch?.code || "—";
@@ -592,15 +654,68 @@ function LivePreviewPane({ camera, branch, streamName, streamLoading }) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="text-sm font-semibold text-foreground">Live Preview</span>
-          {camera && (
+          {viewMode === "single" && camera && (
             <>
               <span className="text-border text-muted-foreground">·</span>
               <span className="text-xs text-muted-foreground truncate">{camName}</span>
               <StatusBadge status={isOnline ? "online" : "offline"} />
             </>
           )}
+          {viewMode === "grid" && branch && (
+            <>
+              <span className="text-border text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground truncate">
+                {branch.name || branch.code} — {gridCols}×{gridCols}
+              </span>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* View mode toggle */}
+          <div className="flex items-center rounded border border-border overflow-hidden">
+            <button
+              onClick={() => setViewMode("single")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                viewMode === "single"
+                  ? "bg-primary text-white"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`}
+            >
+              <Square size={12} />
+              Single
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                viewMode === "grid"
+                  ? "bg-primary text-white"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`}
+            >
+              <LayoutGrid size={12} />
+              Grid
+            </button>
+          </div>
+
+          {/* Grid size selector — only visible in grid mode */}
+          {viewMode === "grid" && (
+            <div className="flex items-center rounded border border-border overflow-hidden">
+              {[2, 3].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setGridCols(n)}
+                  className={`px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                    gridCols === n
+                      ? "bg-primary text-white"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {n}×{n}
+                </button>
+              ))}
+            </div>
+          )}
+
           <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
             <RefreshCw size={14} />
           </button>
@@ -616,8 +731,85 @@ function LivePreviewPane({ camera, branch, streamName, streamLoading }) {
         </div>
       </div>
 
-      {/* Body: video left + info right */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      {/* Grid view body */}
+      {viewMode === "grid" && (() => {
+        const perPage   = gridCols * gridCols;
+        const camList   = cameras || [];
+        const pageCount = Math.max(1, Math.ceil(camList.length / perPage));
+        const pageCams  = camList.slice(gridPage * perPage, (gridPage + 1) * perPage);
+        return (
+          <div className="flex-1 flex flex-col bg-[#0a0f18] min-h-0">
+            {!branch ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
+                <div className="w-14 h-14 rounded-full bg-secondary/50 border border-border flex items-center justify-center">
+                  <LayoutGrid size={22} className="text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground">No branch selected</p>
+                <p className="text-xs text-muted-foreground">Select a branch to view its cameras in the grid</p>
+              </div>
+            ) : camList.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
+                <Camera size={22} className="text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">No cameras in this branch</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 p-3 min-h-0">
+                  <div
+                    className="grid gap-1.5 h-full"
+                    style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gridTemplateRows: `repeat(${gridCols}, 1fr)` }}
+                  >
+                    {Array.from({ length: perPage }).map((_, i) => {
+                      const cam = pageCams[i];
+                      return cam ? (
+                        <GridCell key={cam.id} camera={cam} branch={branch} />
+                      ) : (
+                        <div key={`empty-${i}`} className="bg-black/40 rounded border border-border flex items-center justify-center">
+                          <Camera size={18} className="text-muted-foreground/30" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Page navigation */}
+                {pageCount > 1 && (
+                  <div className="flex items-center justify-center gap-3 py-2 border-t border-border bg-card flex-shrink-0">
+                    <button
+                      onClick={() => setGridPage((p) => Math.max(0, p - 1))}
+                      disabled={gridPage === 0}
+                      className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: pageCount }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setGridPage(i)}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            i === gridPage ? "bg-primary" : "bg-border hover:bg-muted-foreground"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setGridPage((p) => Math.min(pageCount - 1, p + 1))}
+                      disabled={gridPage === pageCount - 1}
+                      className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Single view body: video left + info right */}
+      {viewMode === "single" && <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* ── Left: Video player ── */}
         <div className="flex-1 flex flex-col min-w-0 bg-[#0a0f18]">
@@ -823,7 +1015,7 @@ function LivePreviewPane({ camera, branch, streamName, streamLoading }) {
             </>
           )}
         </div>
-      </div>
+      </div>}
     </section>
   );
 }
@@ -997,6 +1189,7 @@ function MonitoringView() {
         branch={selectedBranch}
         streamName={streamName}
         streamLoading={streamLoading}
+        cameras={cameras}
       />
     </>
   );

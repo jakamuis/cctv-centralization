@@ -411,13 +411,18 @@ async def start_channel_stream(
 
     vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
     if vendor == "acti_snvr":
-        # ACTi SNVR has no RTSP — streams H264 over HTTP multipart.
-        # go2rtc ingests it via its FFmpeg source wrapper.
+        # ACTi SNVR: go2rtc exec: source using acti_pipe.py.
+        # FFmpeg cannot demux the ACTi multipart/H.264 HTTP stream, so we use
+        # acti_pipe.py which manually parses the multipart response and writes
+        # clean H.264 Annex B to stdout. Credentials are percent-encoded so
+        # '#' chars (e.g. samator#2017) don't prematurely end the exec: command
+        # string; acti_pipe.py URL-decodes them before use.
         http_port = nvr.http_port or 80
+        port_suffix = f" {http_port}" if http_port != 80 else ""
         rtsp_url = (
-            f"ffmpeg:http://{encoded_user}:{encoded_pass}"
-            f"@{nvr.nvr_ip}:{http_port}"
-            f"/virtualcamera/channel{channel_id}?media&streamid=0"
+            f"exec:python3 /scripts/acti_pipe.py"
+            f" {nvr.nvr_ip} {channel_id}"
+            f" {encoded_user} {encoded_pass}{port_suffix}"
             f"#video=h264"
         )
     else:

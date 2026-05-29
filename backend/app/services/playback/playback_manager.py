@@ -32,11 +32,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.discovered_nvr import DiscoveredNVR
 from app.models.playback_session import PlaybackSession
-from app.services.playback.acti_playback import build_playback_http_url as build_acti_playback_url
+from app.services.playback.acti_playback import download_acti_recording
 from app.services.playback.hikvision_playback import build_playback_rtsp_url
 from app.services.playback.playback_session import (
     create_session,
     delete_session,
+    get_session_temp_file_path,
     DEFAULT_SESSION_TTL_SECONDS,
 )
 
@@ -60,6 +61,10 @@ class DeviceNotFoundError(PlaybackManagerError):
 
 class Go2RTCError(PlaybackManagerError):
     """Raised when go2rtc stream registration/deletion fails."""
+
+
+class PrefetchError(PlaybackManagerError):
+    """Raised when the ACTi recording download to server fails."""
 
 
 # ---------------------------------------------------------------------------
@@ -107,6 +112,18 @@ async def _register_go2rtc_stream(stream_name: str, rtsp_url: str) -> None:
         )
 
     logger.info("go2rtc stream registered: %r", stream_name)
+
+
+def _delete_temp_file(path: str) -> None:
+    """Remove a prefetch temp file, ignoring missing-file errors."""
+    import os
+    try:
+        os.remove(path)
+        logger.debug("Deleted temp file: %s", path)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        logger.warning("Could not delete temp file %s: %s", path, exc)
 
 
 async def _delete_go2rtc_stream(stream_name: str) -> None:
@@ -172,18 +189,29 @@ async def create_playback_session(
         end_time = end_time.replace(tzinfo=timezone.utc)
 
     stream_name = _build_stream_name(nvr.id, channel, start_time)
-
-    # Build the authenticated source URL — never sent to frontend
     vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
+
+    temp_file_path: str | None = None
+
     if vendor == "acti_snvr":
-        rtsp_url = build_acti_playback_url(
-            nvr_ip=nvr.nvr_ip,
-            http_port=nvr.http_port,
-            username=nvr.username,
-            password=nvr.password,
-            channel=channel,
-            start_time=start_time,
-        )
+        # Download the recording to the server first, then serve via HTTP —
+        # avoids real-time streaming from the device which is unreliable over VPN.
+        try:
+            temp_file_path = await download_acti_recording(
+                nvr_ip=nvr.nvr_ip,
+                http_port=nvr.http_port,
+                username=nvr.username,
+                password=nvr.password,
+                channel=channel,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        except RuntimeError as exc:
+            raise PrefetchError(str(exc)) from exc
+
+        # go2rtc is not used for prefetched sessions; stream_name is a placeholder
+        # that maps to the downloaded file served via the /session/{id}/stream endpoint.
+        rtsp_url = None
     else:
         rtsp_url = build_playback_rtsp_url(
             nvr_ip=nvr.nvr_ip,
@@ -194,9 +222,7 @@ async def create_playback_session(
             start_time=start_time,
             end_time=end_time,
         )
-
-    # Register in go2rtc
-    await _register_go2rtc_stream(stream_name, rtsp_url)
+        await _register_go2rtc_stream(stream_name, rtsp_url)
 
     # Persist session
     try:
@@ -209,11 +235,14 @@ async def create_playback_session(
             stream_name=stream_name,
             created_by=created_by,
             ttl_seconds=ttl_seconds,
+            temp_file_path=temp_file_path,
         )
     except Exception as exc:
-        # If DB write fails, clean up the go2rtc stream we just registered
-        logger.error("DB session creation failed, rolling back go2rtc stream: %s", exc)
-        await _delete_go2rtc_stream(stream_name)
+        logger.error("DB session creation failed: %s", exc)
+        if rtsp_url:
+            await _delete_go2rtc_stream(stream_name)
+        if temp_file_path:
+            _delete_temp_file(temp_file_path)
         raise PlaybackManagerError(f"Failed to create playback session: {exc}") from exc
 
     return session
@@ -241,8 +270,13 @@ async def destroy_playback_session(
 
     stream_name = session.stream_name
 
-    # Remove go2rtc stream first (best-effort)
-    await _delete_go2rtc_stream(stream_name)
+    # Clean up prefetch temp file if present
+    temp_path = await get_session_temp_file_path(str(session_id))
+    if temp_path:
+        _delete_temp_file(temp_path)
+    else:
+        # Non-prefetched session: remove go2rtc stream (best-effort)
+        await _delete_go2rtc_stream(stream_name)
 
     # Remove DB + Redis records
     deleted = await delete_session(db, session_id)

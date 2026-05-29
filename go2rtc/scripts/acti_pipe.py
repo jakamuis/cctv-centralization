@@ -17,6 +17,7 @@ import sys
 import socket
 import base64
 import re
+from urllib.parse import unquote
 
 def main():
     args = sys.argv[1:]
@@ -26,16 +27,16 @@ def main():
         host    = args[1]
         channel = args[2]
         sec     = args[3]
-        user    = args[4]
-        pwd     = args[5]
+        user    = unquote(args[4])
+        pwd     = unquote(args[5])
         port    = int(args[6]) if len(args) > 6 else 80
         path    = f'/playback/?cmd=1&channel={channel}&sec={sec}&usec=0&mode=0&i_only=0'
     else:
         # live mode: <host> <channel> <user> <pass> [port]
         host    = args[0]
         channel = args[1]
-        user    = args[2]
-        pwd     = args[3]
+        user    = unquote(args[2])
+        pwd     = unquote(args[3])
         port    = int(args[4]) if len(args) > 4 else 80
         path    = f'/virtualcamera/channel{channel}?media&streamid=0'
 

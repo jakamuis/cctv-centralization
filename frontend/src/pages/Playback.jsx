@@ -37,16 +37,17 @@ function normaliseNvr(nvr) {
     code:   nvr.code,
     ip:     nvr.nvr_ip,
     status: nvr.sync_status === 'synced' ? 'online' : 'offline',
+    vendor: nvr.vendor || 'hikvision',
   }
 }
 
-function normaliseChannel(ch) {
+function normaliseChannel(ch, nvrOnline = true) {
   return {
     _raw:           ch,
     id:             ch.id,
     name:           ch.channel_name || `Channel ${ch.channel_id}`,
     channel_number: ch.channel_id,
-    status:         ch.is_enabled ? 'online' : 'offline',
+    status:         (nvrOnline && ch.is_enabled) ? 'online' : 'offline',
     channel_id:     ch.channel_id,
   }
 }
@@ -93,6 +94,25 @@ function StatusBadge({ status }) {
     >
       {status === 'online' ? 'Online' : 'Offline'}
     </span>
+  )
+}
+
+// ─── Native Video Player (prefetched MP4) ────────────────────────────────────
+// Used for ACTi SNVR sessions where the recording was pre-downloaded to server.
+
+function NativeVideoPlayer({ streamUrl }) {
+  const fullUrl = streamUrl.startsWith('http')
+    ? streamUrl
+    : `${window.location.origin}${streamUrl}`
+
+  return (
+    <video
+      src={fullUrl}
+      controls
+      autoPlay
+      playsInline
+      style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+    />
   )
 }
 
@@ -278,7 +298,7 @@ function PlaybackLeftPane({
   startTime, onStartTimeChange,
   endTime,   onEndTimeChange,
   onSearch, searchLoading,
-  segments, searchError,
+  segments, searchError, searchAttempted,
   onPlay, sessionLoading,
   onDownload,
 }) {
@@ -342,6 +362,7 @@ function PlaybackLeftPane({
             )}
             {!nvrsLoading && filteredNvrs.map((nvr) => {
               const isActive = selectedNvr?.id === nvr.id
+              const isActi = nvr.vendor === 'acti_snvr'
               return (
                 <button
                   key={nvr.id}
@@ -355,9 +376,16 @@ function PlaybackLeftPane({
                   )}
                   <Monitor size={13} className={`flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                   <div className="flex-1 min-w-0 text-left">
-                    <span className="block truncate text-xs font-medium">
-                      {nvr.name || nvr.code || `NVR ${nvr.id}`}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-xs font-medium">
+                        {nvr.name || nvr.code || `NVR ${nvr.id}`}
+                      </span>
+                      {isActi && (
+                        <span className="flex-shrink-0 text-[9px] font-semibold px-1 py-0.5 rounded bg-amber-500/15 text-amber-400 leading-none">
+                          ACTi
+                        </span>
+                      )}
+                    </div>
                     {nvr.ip && (
                       <span className="block truncate text-[10px] text-muted-foreground leading-tight">{nvr.ip}</span>
                     )}
@@ -535,6 +563,14 @@ function PlaybackLeftPane({
           </div>
         )}
 
+        {/* ACTi SNVR notice — shown after a search returns no recordings for this device */}
+        {selectedNvr?.vendor === 'acti_snvr' && searchAttempted && !searchLoading && !hasResults && selectedCamera && (
+          <div className="mx-3.5 my-3 px-3 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-400 leading-relaxed flex items-start gap-2">
+            <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />
+            <span>ACTi SNVR — no recording data found at this time. The device may not have local storage or may not record this channel.</span>
+          </div>
+        )}
+
         {/* Search error */}
         {searchError && (
           <div className="mx-3.5 my-3 px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400 leading-relaxed flex items-start gap-2">
@@ -651,18 +687,32 @@ function PlaybackMainArea({
         >
           {session ? (
             <div className="absolute inset-0">
-              <MsePlaybackPlayer
-                key={session.session_id}
-                streamName={session.stream_name}
-                sessionId={session.session_id}
-              />
+              {session.is_prefetched ? (
+                <NativeVideoPlayer
+                  key={session.session_id}
+                  streamUrl={session.stream_url}
+                />
+              ) : (
+                <MsePlaybackPlayer
+                  key={session.session_id}
+                  streamName={session.stream_name}
+                  sessionId={session.session_id}
+                />
+              )}
             </div>
           ) : sessionLoading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
               <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
                 <Video size={26} className="text-primary animate-pulse" />
               </div>
-              <p className="text-xs text-muted-foreground">Starting playback stream…</p>
+              <p className="text-xs text-muted-foreground">
+                {selectedNvr?.vendor === 'acti_snvr'
+                  ? 'Downloading recording from device…'
+                  : 'Starting playback stream…'}
+              </p>
+              {selectedNvr?.vendor === 'acti_snvr' && (
+                <p className="text-[10px] text-muted-foreground/60">This may take a minute depending on clip length</p>
+              )}
             </div>
           ) : searchLoading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
@@ -762,11 +812,12 @@ export default function PlaybackView() {
   const [endTime,      setEndTime]      = useState('23:59')
 
   // Search
-  const [segments,       setSegments]       = useState([])
-  const [timelineBlocks, setTimelineBlocks] = useState([])
-  const [timelineWindow, setTimelineWindow] = useState({ start: null, end: null })
-  const [searchLoading,  setSearchLoading]  = useState(false)
-  const [searchError,    setSearchError]    = useState('')
+  const [segments,        setSegments]        = useState([])
+  const [timelineBlocks,  setTimelineBlocks]  = useState([])
+  const [timelineWindow,  setTimelineWindow]  = useState({ start: null, end: null })
+  const [searchLoading,   setSearchLoading]   = useState(false)
+  const [searchError,     setSearchError]     = useState('')
+  const [searchAttempted, setSearchAttempted] = useState(false)
 
   // Playback session — separate error so play errors are visible in main area
   const [session,        setSession]        = useState(null)
@@ -810,11 +861,13 @@ export default function PlaybackView() {
     setSession(null)
     setSearchError('')
     setSessionError('')
+    setSearchAttempted(false)
     setCamerasLoading(true)
     discoveryApi.getChannels(nvr.id)
       .then((data) => {
         const raw = Array.isArray(data) ? data : (data?.channels ?? [])
-        setCameras(raw.map(normaliseChannel))
+        const nvrOnline = nvr.status === 'online'
+        setCameras(raw.map((ch) => normaliseChannel(ch, nvrOnline)))
       })
       .catch((e) => console.error('[Playback] Failed to load channels:', e))
       .finally(() => setCamerasLoading(false))
@@ -827,6 +880,7 @@ export default function PlaybackView() {
     setSession(null)
     setSearchError('')
     setSessionError('')
+    setSearchAttempted(false)
   }, [])
 
   const handleSearch = useCallback(async () => {
@@ -859,6 +913,7 @@ export default function PlaybackView() {
       setSearchError(e.message || 'Search failed — check connection and try again')
     } finally {
       setSearchLoading(false)
+      setSearchAttempted(true)
     }
   }, [selectedNvr, selectedCamera, selectedDate, startTime, endTime])
 
@@ -914,6 +969,7 @@ export default function PlaybackView() {
         searchLoading={searchLoading}
         segments={segments}
         searchError={searchError}
+        searchAttempted={searchAttempted}
         onPlay={handlePlay}
         sessionLoading={sessionLoading}
         onDownload={() => setDownloadOpen(true)}

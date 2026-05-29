@@ -27,11 +27,12 @@ Audit logging:
 from __future__ import annotations
 
 import logging
+import os
 from datetime import timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,9 +62,11 @@ from app.services.playback.hikvision_playback import (
     PlaybackSearchError,
     search_recordings,
 )
+from app.services.playback.acti_playback import probe_playback_available
 from app.services.playback.playback_manager import (
     Go2RTCError,
     PlaybackManagerError,
+    PrefetchError,
     build_playback_stream_url,
     create_playback_session,
     destroy_playback_session,
@@ -71,6 +74,7 @@ from app.services.playback.playback_manager import (
 from app.services.playback.playback_session import (
     extend_session_ttl,
     get_session,
+    get_session_temp_file_path,
 )
 from app.services.playback.timeline_parser import (
     build_timeline,
@@ -155,11 +159,23 @@ async def search_recordings_endpoint(
 
     vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
     if vendor == "acti_snvr":
-        # ACTi SNVR has no recording search API — playback is by timestamp.
-        # Return the whole requested window as one available segment so the
-        # user can click anywhere on the timeline and start playback.
+        # ACTi SNVR has no recording search API.
+        # Probe the /playback/ endpoint to see if the device actually has
+        # recordings at the requested start time before claiming a segment exists.
         from app.services.playback.hikvision_playback import RecordingSegment
-        segments = [RecordingSegment(start=start, end=end, track_id="1", recording_type="normal")]
+        has_recording = await probe_playback_available(
+            nvr_ip=nvr.nvr_ip,
+            http_port=nvr.http_port,
+            username=nvr.username,
+            password=nvr.password,
+            channel=body.channel,
+            start_time=start,
+        )
+        segments = (
+            [RecordingSegment(start=start, end=end, track_id="1", recording_type="normal")]
+            if has_recording
+            else []
+        )
     else:
         try:
             segments = await search_recordings(
@@ -230,7 +246,19 @@ async def get_timeline_endpoint(
     vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
     if vendor == "acti_snvr":
         from app.services.playback.hikvision_playback import RecordingSegment
-        segments = [RecordingSegment(start=start, end=end, track_id="1", recording_type="normal")]
+        has_recording = await probe_playback_available(
+            nvr_ip=nvr.nvr_ip,
+            http_port=nvr.http_port,
+            username=nvr.username,
+            password=nvr.password,
+            channel=body.channel,
+            start_time=start,
+        )
+        segments = (
+            [RecordingSegment(start=start, end=end, track_id="1", recording_type="normal")]
+            if has_recording
+            else []
+        )
     else:
         try:
             segments = await search_recordings(
@@ -313,6 +341,9 @@ async def create_session_endpoint(
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
 
+    vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
+    is_prefetched = vendor == "acti_snvr"
+
     try:
         session = await create_playback_session(
             db=db,
@@ -321,6 +352,12 @@ async def create_session_endpoint(
             start_time=start,
             end_time=end,
             created_by=current_user.id,
+        )
+    except PrefetchError as exc:
+        logger.error("ACTi recording prefetch failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Recording download failed: {exc}",
         )
     except Go2RTCError as exc:
         logger.error("go2rtc stream registration failed: %s", exc)
@@ -344,12 +381,16 @@ async def create_session_endpoint(
         ip_address=request.client.host if request.client else None,
     )
 
-    stream_url = build_playback_stream_url(session.stream_name)
+    if is_prefetched:
+        stream_url = f"/api/v1/playback/session/{session.id}/stream"
+    else:
+        stream_url = build_playback_stream_url(session.stream_name)
 
     return PlaybackSessionResponse(
         session_id=session.id,
         stream_name=session.stream_name,
         stream_url=stream_url,
+        is_prefetched=is_prefetched,
         expires_at=session.expires_at,
         device_id=session.device_id,
         channel=session.channel,
@@ -438,6 +479,43 @@ async def delete_session_endpoint(
     return PlaybackSessionDeleteResponse(
         session_id=session_id,
         deleted=deleted,
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /playback/session/{id}/stream  — serve prefetched MP4 file
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/session/{session_id}/stream",
+    summary="Stream a prefetched ACTi recording (MP4)",
+)
+async def stream_prefetched_recording(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission("playback.view")),
+):
+    """
+    Stream the server-side MP4 file that was pre-downloaded from an ACTi SNVR.
+
+    Supports HTTP Range requests so the browser can seek within the recording.
+    Only available for sessions created with is_prefetched=True.
+    """
+    session = await get_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    temp_path = await get_session_temp_file_path(str(session_id))
+    if not temp_path or not os.path.exists(temp_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Prefetched recording not found — session may have expired",
+        )
+
+    return FileResponse(
+        path=temp_path,
+        media_type="video/mp4",
+        filename=f"recording_ch{session.channel}.mp4",
     )
 
 
