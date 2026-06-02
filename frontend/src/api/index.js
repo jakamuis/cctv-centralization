@@ -72,6 +72,22 @@ async function httpPost(path, body) {
   return res.json()
 }
 
+async function httpPut(path, body) {
+  const headers = getAuthHeaders()
+  headers['Content-Type'] = 'application/json'
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'PUT',
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : null,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Request failed: ${res.status} ${res.statusText} - ${text}`)
+  }
+  return res.json()
+}
+
 async function httpDelete(path) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'DELETE',
@@ -81,6 +97,7 @@ async function httpDelete(path) {
     const text = await res.text().catch(() => '')
     throw new Error(`Request failed: ${res.status} ${res.statusText} - ${text}`)
   }
+  if (res.status === 204) return null
   return res.json()
 }
 
@@ -177,6 +194,23 @@ export const discoveryApi = {
   // Register channel with go2rtc and get back stream_name
   startChannelStream: (nvrId, channelId) =>
     httpPost(`/discovery/nvrs/${nvrId}/channels/${channelId}/stream`),
+}
+
+// ============================================
+// Devices API
+// ============================================
+
+export const devicesApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.site_id) q.set('site_id', params.site_id)
+    if (params.status)  q.set('status', params.status)
+    const qs = q.toString()
+    return httpGet(`/devices/${qs ? `?${qs}` : ''}`)
+  },
+  create: (data) => httpPost('/devices/', data),
+  update: (id, data) => httpPut(`/devices/${id}`, data),
+  remove: (id) => httpDelete(`/devices/${id}`),
 }
 
 // ============================================

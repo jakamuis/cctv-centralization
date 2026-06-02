@@ -5,9 +5,11 @@ import path from "path"
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+      // shadcn ui components use "*/lib/utils", "*/components/ui/..." — map * → src/
+      { find: /^\*\/(.*)/, replacement: path.resolve(__dirname, "./src/$1") },
+    ],
   },
   server: {
     host: '0.0.0.0',

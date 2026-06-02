@@ -10,6 +10,7 @@
 
 import React from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import Login from './pages/Login'
 import MonitoringApp from './pages/Monitoring'
 
@@ -18,10 +19,10 @@ import MonitoringApp from './pages/Monitoring'
 function AppInner() {
   const { isAuthenticated, loading, user, logout } = useAuth()
 
-  // While verifying existing token, show a minimal dark loading screen
+  // While verifying existing token, show a minimal loading screen
   if (loading) {
     return (
-      <div className="dark w-screen h-screen flex items-center justify-center bg-[#0d1117]">
+      <div className="w-screen h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           <span className="text-xs text-muted-foreground">Loading…</span>
@@ -43,8 +44,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppInner />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppInner />
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

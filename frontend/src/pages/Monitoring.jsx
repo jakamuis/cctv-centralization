@@ -26,9 +26,13 @@ import {
   LogOut,
   LayoutGrid,
   Square,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
 import { discoveryApi } from "../api";
 import PlaybackView from "./Playback";
+import DevicesPage from "./Devices";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -141,7 +145,7 @@ function AppSidebar({ activeNav, onNavigate, user, onLogout }) {
   }
 
   return (
-    <aside className="w-52 flex flex-col border-r border-border bg-[#0f1623] flex-shrink-0">
+    <aside className="w-52 flex flex-col border-r border-border bg-sidebar flex-shrink-0">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
         <div className="w-8 h-8 bg-primary rounded flex items-center justify-center flex-shrink-0">
@@ -238,7 +242,7 @@ function BranchesPane({ branches, loading, error, selectedBranchId, onSelectBran
 
       {/* Search */}
       <div className="px-3.5 py-2.5 border-b border-border">
-        <div className="flex items-center gap-2 bg-[#1a2436] border border-border rounded px-2.5 py-1.5">
+        <div className="flex items-center gap-2 bg-muted border border-border rounded px-2.5 py-1.5">
           <Search size={12} className="text-muted-foreground flex-shrink-0" />
           <input
             type="text"
@@ -349,7 +353,7 @@ function CamerasPane({ cameras, loading, error, selectedCameraId, onSelectCamera
 
       {/* Search */}
       <div className="px-3.5 py-2.5 border-b border-border">
-        <div className="flex items-center gap-2 bg-[#1a2436] border border-border rounded px-2.5 py-1.5">
+        <div className="flex items-center gap-2 bg-muted border border-border rounded px-2.5 py-1.5">
           <Search size={12} className="text-muted-foreground flex-shrink-0" />
           <input
             type="text"
@@ -1198,8 +1202,9 @@ function MonitoringView() {
 // ─── Top Header ───────────────────────────────────────────────────────────────
 
 function TopHeader({ activeNav, user }) {
+  const { theme, toggleTheme } = useTheme();
   return (
-    <header className="flex items-center h-12 px-4 border-b border-border bg-[#0f1623] flex-shrink-0 gap-3">
+    <header className="flex items-center h-12 px-4 border-b border-border bg-sidebar flex-shrink-0 gap-3">
       <nav className="flex items-center gap-1.5 text-xs text-muted-foreground flex-1 min-w-0">
         <span className="hover:text-foreground cursor-pointer">Home</span>
         <ChevronRight size={13} />
@@ -1211,7 +1216,7 @@ function TopHeader({ activeNav, user }) {
         <span className="text-emerald-400 whitespace-nowrap">All Systems Operational</span>
       </div>
 
-      <div className="flex items-center gap-2 bg-[#1e2a3b] border border-border rounded px-3 py-1.5 w-44">
+      <div className="flex items-center gap-2 bg-secondary border border-border rounded px-3 py-1.5 w-44">
         <Search size={13} className="text-muted-foreground flex-shrink-0" />
         <input
           type="text"
@@ -1219,6 +1224,14 @@ function TopHeader({ activeNav, user }) {
           className="bg-transparent text-xs text-foreground placeholder-muted-foreground outline-none w-full"
         />
       </div>
+
+      <button
+        onClick={toggleTheme}
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+      </button>
 
       <button className="relative p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
         <Bell size={16} />
@@ -1241,7 +1254,7 @@ export default function MonitoringApp({ user, onLogout }) {
   const [activeNav, setActiveNav] = useState("Dashboard");
 
   return (
-    <div className="dark w-screen h-screen flex flex-col overflow-hidden bg-background text-foreground font-['Inter',sans-serif]">
+    <div className="w-screen h-screen flex flex-col overflow-hidden bg-background text-foreground font-['Inter',sans-serif]">
       <TopHeader activeNav={activeNav} user={user} />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -1259,6 +1272,8 @@ export default function MonitoringApp({ user, onLogout }) {
             <MonitoringView />
           ) : activeNav === "Playback" ? (
             <PlaybackView />
+          ) : activeNav === "Devices" ? (
+            <DevicesPage />
           ) : (
             <PlaceholderView label={activeNav} />
           )}
