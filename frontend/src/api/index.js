@@ -214,6 +214,42 @@ export const devicesApi = {
 }
 
 // ============================================
+// Alerts API
+// ============================================
+
+export const alertsApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.severity)     q.set('severity', params.severity)
+    if (params.acknowledged !== undefined) q.set('acknowledged', params.acknowledged)
+    const qs = q.toString()
+    return httpGet(`/alerts/${qs ? `?${qs}` : ''}`)
+  },
+  acknowledge: (id) => httpPost(`/alerts/${id}/acknowledge`),
+  resolve:     (id) => httpPost(`/alerts/${id}/resolve`),
+}
+
+// ============================================
+// Users API
+// ============================================
+
+export const usersApi = {
+  list:   ()           => httpGet('/users'),
+  create: (data)       => httpPost('/users', data),
+  update: (id, data)   => httpPut(`/users/${id}`, data),
+  remove: (id)         => httpDelete(`/users/${id}`),
+}
+
+// ============================================
+// Roles API
+// ============================================
+
+export const rolesApi = {
+  list:            () => httpGet('/roles'),
+  listPermissions: () => httpGet('/permissions'),
+}
+
+// ============================================
 // Sites API
 // ============================================
 

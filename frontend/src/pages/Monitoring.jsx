@@ -28,11 +28,20 @@ import {
   Square,
   Sun,
   Moon,
+  Eye,
+  CalendarDays,
+  Users,
+  Map,
+  ShieldCheck,
+  FileText,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { discoveryApi } from "../api";
 import PlaybackView from "./Playback";
 import DevicesPage from "./Devices";
+import AlertsPage from "./Alerts";
+import UsersPage from "./Users";
+import RolesPermissionsPage from "./RolesPermissions";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -46,12 +55,18 @@ import DevicesPage from "./Devices";
  *   "viewer"   → VIEWER       — monitoring only
  */
 const ALL_NAV_ITEMS = [
-  { icon: LayoutDashboard, label: "Dashboard",  section: "main",       roles: ["admin", "operator", "viewer"] },
-  { icon: Monitor,         label: "Monitoring", section: "main",       roles: ["admin", "operator", "viewer"] },
-  { icon: Play,            label: "Playback",   section: "main",       roles: ["admin", "operator"] },
-  { icon: Bell,            label: "Alerts",     section: "main",       roles: ["admin", "operator"] },
-  { icon: Server,          label: "Devices",    section: "management", roles: ["admin"] },
-  { icon: Settings,        label: "Settings",   section: "bottom",     roles: ["admin"] },
+  { icon: LayoutDashboard, label: "Dashboard",          section: "main",       roles: ["admin", "operator", "viewer"] },
+  { icon: Eye,             label: "Live Streams",        section: "main",       roles: ["admin", "operator", "viewer"] },
+  { icon: Monitor,         label: "Monitoring",          section: "main",       roles: ["admin", "operator", "viewer"] },
+  { icon: Play,            label: "Playback",            section: "main",       roles: ["admin", "operator"] },
+  { icon: Bell,            label: "Alerts",              section: "main",       roles: ["admin", "operator"] },
+  { icon: Server,          label: "Devices",             section: "management", roles: ["admin"] },
+  { icon: Camera,          label: "Camera Groups",       section: "management", roles: ["admin"] },
+  { icon: Map,             label: "Maps",                section: "management", roles: ["admin"] },
+  { icon: Users,           label: "Users",               section: "management", roles: ["admin"] },
+  { icon: ShieldCheck,     label: "Roles & Permissions", section: "management", roles: ["admin"] },
+  { icon: FileText,        label: "Audit Logs",          section: "management", roles: ["admin"] },
+  { icon: Settings,        label: "Settings",            section: "bottom",     roles: ["admin"] },
 ];
 
 /**
@@ -439,7 +454,7 @@ function CamerasPane({ cameras, loading, error, selectedCameraId, onSelectCamera
 // ─── Inline MSE Player ────────────────────────────────────────────────────────
 // Mirrors DiscoveryLivePlayer but renders a bare <video> with no wrapper CSS.
 
-function MsePlayer({ streamName }) {
+function MsePlayer({ streamName, onError }) {
   const videoRef = useRef(null);
   const wsRef    = useRef(null);
   const msRef    = useRef(null);
@@ -486,6 +501,12 @@ function MsePlayer({ streamName }) {
       ws.binaryType = "arraybuffer";
       wsRef.current = ws;
 
+      // If no binary video data arrives within 8 s the camera is unreachable
+      let gotData = false;
+      const noDataTimer = setTimeout(() => {
+        if (!gotData) onError?.();
+      }, 8000);
+
       ws.onopen = () => ws.send(JSON.stringify({ type: "mse", value: supported }));
 
       ws.onmessage = (ev) => {
@@ -511,6 +532,8 @@ function MsePlayer({ streamName }) {
             } catch {}
           }
         } else {
+          gotData = true;
+          clearTimeout(noDataTimer);
           const sb = sbRef.current;
           if (!sb) return;
           const data = new Uint8Array(ev.data);
@@ -523,8 +546,8 @@ function MsePlayer({ streamName }) {
         }
       };
 
-      ws.onerror = () => {};
-      ws.onclose = () => { wsRef.current = null; };
+      ws.onerror = () => { clearTimeout(noDataTimer); if (!gotData) onError?.(); };
+      ws.onclose = () => { clearTimeout(noDataTimer); wsRef.current = null; if (!gotData) onError?.(); };
     }, { once: true });
 
     video.addEventListener("canplay", () => {
@@ -555,7 +578,7 @@ function MsePlayer({ streamName }) {
 // ─── Grid Cell ────────────────────────────────────────────────────────────────
 // Self-contained cell that registers its own stream and plays it.
 
-function GridCell({ camera, branch }) {
+function GridCell({ camera, branch, onStatusChange }) {
   const [streamName, setStreamName] = useState(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -568,20 +591,36 @@ function GridCell({ camera, branch }) {
     discoveryApi
       .startChannelStream(branch.id, camera.channel_id)
       .then((res) => {
-        if (res?.stream_name) setStreamName(res.stream_name);
-        else setFailed(true);
+        if (res?.stream_name) {
+          setStreamName(res.stream_name);
+          onStatusChange?.(camera.id, "online");
+        } else {
+          setFailed(true);
+          onStatusChange?.(camera.id, "offline");
+        }
       })
-      .catch(() => setFailed(true))
+      .catch(() => {
+        setFailed(true);
+        onStatusChange?.(camera.id, "offline");
+      })
       .finally(() => setLoading(false));
   }, [camera?.id, branch?.id]);
 
   const camName = camera?.name || `Camera ${camera?.id}`;
-  const isOnline = camera?.status === "online";
+  // Use actual stream state for the dot — overrides initial estimate
+  const dotStatus = streamName ? "online" : failed ? "offline" : camera?.status;
 
   return (
     <div className="relative bg-black rounded overflow-hidden border border-border">
       {streamName ? (
-        <MsePlayer key={streamName} streamName={streamName} />
+        <MsePlayer
+          key={streamName}
+          streamName={streamName}
+          onError={() => {
+            setFailed(true);
+            onStatusChange?.(camera.id, "offline");
+          }}
+        />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
           <Camera size={18} className="text-muted-foreground" />
@@ -595,7 +634,7 @@ function GridCell({ camera, branch }) {
       {/* Name overlay */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5 pointer-events-none">
         <div className="flex items-center gap-1.5">
-          <StatusDot status={isOnline ? "online" : "offline"} />
+          <StatusDot status={dotStatus} />
           <span className="text-[10px] text-white font-medium truncate">{camName}</span>
         </div>
       </div>
@@ -608,7 +647,7 @@ function GridCell({ camera, branch }) {
 //   Left  (flex-1): compact video player
 //   Right (w-72):   camera info panel
 
-function LivePreviewPane({ camera, branch, streamName, streamLoading, cameras }) {
+function LivePreviewPane({ camera, branch, streamName, streamLoading, cameras, onCameraStatusChange }) {
   const [streamLoaded, setStreamLoaded] = useState(false);
   const [viewMode,     setViewMode]     = useState("grid"); // "single" | "grid"
   const [gridCols,     setGridCols]     = useState(2);        // 2 → 2×2, 3 → 3×3
@@ -766,7 +805,7 @@ function LivePreviewPane({ camera, branch, streamName, streamLoading, cameras })
                     {Array.from({ length: perPage }).map((_, i) => {
                       const cam = pageCams[i];
                       return cam ? (
-                        <GridCell key={cam.id} camera={cam} branch={branch} />
+                        <GridCell key={cam.id} camera={cam} branch={branch} onStatusChange={onCameraStatusChange} />
                       ) : (
                         <div key={`empty-${i}`} className="bg-black/40 rounded border border-border flex items-center justify-center">
                           <Camera size={18} className="text-muted-foreground/30" />
@@ -1028,11 +1067,18 @@ function LivePreviewPane({ camera, branch, streamName, streamLoading, cameras })
 
 function PlaceholderView({ label }) {
   const icons = {
-    Dashboard: LayoutDashboard,
-    Playback:  Play,
-    Alerts:    Bell,
-    Devices:   Server,
-    Settings:  Settings,
+    Dashboard:            LayoutDashboard,
+    "Live Streams":       Eye,
+    Playback:             Play,
+    Events:               CalendarDays,
+    Alerts:               Bell,
+    Devices:              Server,
+    "Camera Groups":      Camera,
+    Maps:                 Map,
+    Users:                Users,
+    "Roles & Permissions":ShieldCheck,
+    "Audit Logs":         FileText,
+    Settings:             Settings,
   };
   const Icon = icons[label] || Monitor;
 
@@ -1145,6 +1191,13 @@ function MonitoringView() {
       .finally(() => setCamerasLoading(false));
   }, []);
 
+  // ── Update a single camera's status (called by GridCell on stream result) ────
+  const handleCameraStatusChange = useCallback((cameraId, status) => {
+    setCameras((prev) =>
+      prev.map((c) => c.id === cameraId ? { ...c, status } : c)
+    );
+  }, []);
+
   // ── Select a camera → register stream with go2rtc ───────────────────────────
   const handleSelectCamera = useCallback((cam) => {
     setSelectedCamera(cam);
@@ -1158,12 +1211,16 @@ function MonitoringView() {
       .then((res) => {
         if (res?.stream_name) {
           setStreamName(res.stream_name);
-          console.info("Stream registered:", res.stream_name);
+          setCameras((prev) =>
+            prev.map((c) => c.id === cam.id ? { ...c, status: "online" } : c)
+          );
+        } else {
+          setCameras((prev) =>
+            prev.map((c) => c.id === cam.id ? { ...c, status: "offline" } : c)
+          );
         }
       })
-      .catch((err) => {
-        console.warn("Stream registration failed:", err);
-        // Mark this specific camera as offline so its dot turns red
+      .catch(() => {
         setCameras((prev) =>
           prev.map((c) => c.id === cam.id ? { ...c, status: "offline" } : c)
         );
@@ -1194,6 +1251,7 @@ function MonitoringView() {
         streamName={streamName}
         streamLoading={streamLoading}
         cameras={cameras}
+        onCameraStatusChange={handleCameraStatusChange}
       />
     </>
   );
@@ -1268,12 +1326,18 @@ export default function MonitoringApp({ user, onLogout }) {
         <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
           {activeNav === "Dashboard" ? (
             <DashboardView />
-          ) : activeNav === "Monitoring" ? (
+          ) : activeNav === "Monitoring" || activeNav === "Live Streams" ? (
             <MonitoringView />
           ) : activeNav === "Playback" ? (
             <PlaybackView />
+          ) : activeNav === "Alerts" ? (
+            <AlertsPage />
           ) : activeNav === "Devices" ? (
             <DevicesPage />
+          ) : activeNav === "Users" ? (
+            <UsersPage />
+          ) : activeNav === "Roles & Permissions" ? (
+            <RolesPermissionsPage />
           ) : (
             <PlaceholderView label={activeNav} />
           )}

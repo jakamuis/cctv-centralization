@@ -187,10 +187,13 @@ export default function DashboardView() {
     finally { setLoading(false) }
   }
 
-  const totalCams   = cameras.filter(c => c.isEnabled).length
-  const onlineCams  = cameras.filter(c => c.isOnline).length
-  const offlineCams = cameras.filter(c => c.isEnabled && !c.isOnline).length
-  const camPct      = totalCams ? Math.round(onlineCams / totalCams * 100) : 0
+  const totalCams    = cameras.filter(c => c.isEnabled).length
+  const onlineCams   = cameras.filter(c => c.isOnline).length
+  const offlineCams  = cameras.filter(c => c.isEnabled && !c.isOnline).length
+  const camPct       = totalCams ? Math.round(onlineCams / totalCams * 100) : 0
+
+  const onlineNvrs   = nvrs.filter(n => n.sync_status === 'synced').length
+  const offlineNvrs  = nvrs.length - onlineNvrs
 
   const totalDevs   = devices.length
   const onlineDevs  = devices.filter(d => d.status === 'ONLINE').length
@@ -200,20 +203,27 @@ export default function DashboardView() {
 
   const statCards = [
     {
-      label: 'Total Cameras',
+      label: 'Synced Cameras',
       value: loading ? '—' : String(totalCams),
       Icon:  Camera,
       color: 'text-blue-400',
       bg:    'bg-blue-500/10 border-blue-500/20',
-      sub:   <span className="text-[10px] text-muted-foreground">Online <span className="text-emerald-400 font-medium">{loading ? '—' : onlineCams}</span> &bull; Offline <span className="text-red-400 font-medium">{loading ? '—' : offlineCams}</span></span>,
+      sub:   <span className="text-[10px] text-muted-foreground">
+        Enabled <span className="text-emerald-400 font-medium">{loading ? '—' : onlineCams}</span>
+        {offlineCams > 0 && <> &bull; Disabled <span className="text-red-400 font-medium">{offlineCams}</span></>}
+        {!loading && offlineNvrs > 0 && <> &bull; <span className="text-amber-400 font-medium">{offlineNvrs} NVRs unreachable</span></>}
+      </span>,
     },
     {
-      label: 'Online Cameras',
+      label: 'NVR-Confirmed Online',
       value: loading ? '—' : String(onlineCams),
       Icon:  CircleDot,
       color: 'text-emerald-400',
       bg:    'bg-emerald-500/10 border-emerald-500/20',
-      sub:   <span className="text-[10px] text-muted-foreground"><span className="text-emerald-400 font-medium">{loading ? '—' : `${camPct}%`}</span> of total fleet</span>,
+      sub:   <span className="text-[10px] text-muted-foreground">
+        <span className="text-emerald-400 font-medium">{loading ? '—' : `${camPct}%`}</span> of synced fleet
+        &nbsp;&bull; verify streams in Monitoring
+      </span>,
     },
     {
       label: 'Total Devices',
@@ -258,7 +268,9 @@ export default function DashboardView() {
         <div>
           <h1 className="text-base font-semibold text-foreground">{greeting()}, Admin 👋</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {loading ? 'Loading system status…' : `${onlineCams} cameras online across ${nvrs.filter(n => n.sync_status === 'synced').length} NVRs.`}
+            {loading
+              ? 'Loading system status…'
+              : `${onlineCams} cameras confirmed across ${onlineNvrs} reachable NVRs.${offlineNvrs > 0 ? ` ${offlineNvrs} NVRs unreachable — camera count unknown.` : ''}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -312,15 +324,16 @@ export default function DashboardView() {
           </div>
         </div>
 
-        {/* Device Status Donut (real data) */}
+        {/* Camera Status Donut (real data) */}
         <div className="col-span-2 bg-card border border-border rounded-lg p-4 flex flex-col">
           <h3 className="text-xs font-semibold text-foreground mb-2">Camera Status</h3>
           <div className="flex-1 flex flex-col items-center justify-center gap-2">
-            <DonutChart online={onlineCams} offline={offlineCams} />
+            <DonutChart online={onlineCams} offline={offlineCams + offlineNvrs} />
             <div className="space-y-1 w-full">
               {[
-                { label: 'Online',  count: onlineCams,  color: '#10b981' },
-                { label: 'Offline', count: offlineCams, color: '#ef4444' },
+                { label: 'Confirmed', count: onlineCams,             color: '#10b981' },
+                { label: 'Disabled',  count: offlineCams,            color: '#ef4444' },
+                { label: 'NVR down',  count: offlineNvrs,            color: '#f59e0b' },
               ].map(({ label, count, color }) => (
                 <div key={label} className="flex items-center justify-between text-[10px]">
                   <div className="flex items-center gap-1.5">
@@ -331,6 +344,9 @@ export default function DashboardView() {
                 </div>
               ))}
             </div>
+            <p className="text-[9px] text-muted-foreground text-center leading-tight opacity-70">
+              Stream-verified status available in Monitoring
+            </p>
           </div>
         </div>
 
