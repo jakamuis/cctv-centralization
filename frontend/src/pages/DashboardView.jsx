@@ -1,164 +1,185 @@
 import { useState, useEffect } from 'react'
 import {
-  Camera, Monitor, Bell, Database,
-  Activity, Maximize2, RefreshCw, AlertCircle, Server,
+  Camera, Monitor, Bell, Server, Play, RefreshCw, Download,
+  Eye, AlertTriangle, UserPlus, Settings, FilmIcon,
+  HardDrive, Cpu, Database, Wifi, CircleDot, Clock,
 } from 'lucide-react'
-import { discoveryApi } from '../api'
+import { discoveryApi, devicesApi } from '../api'
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Editable static data (edit these manually as needed) ─────────────────────
 
-const RECENT_EVENTS = [
-  { id:1, type:'Motion Detection',    camera:'CAM 03 - Office Floor 1', time:'10:24:31', color:'#ef4444' },
-  { id:2, type:'Line Crossing',       camera:'CAM 11 - Front Gate',     time:'10:22:15', color:'#f59e0b' },
-  { id:3, type:'Intrusion Detection', camera:'CAM 06 - Parking Area 1', time:'10:18:07', color:'#ef4444' },
-  { id:4, type:'Camera Offline',      camera:'CAM 08 - Staircase 1',    time:'10:15:42', color:'#6b7280' },
-  { id:5, type:'Motion Detection',    camera:'CAM 14 - Pantry',         time:'10:12:33', color:'#ef4444' },
+const STORAGE_USED_TB   = 134.8
+const STORAGE_TOTAL_TB  = 200
+const CPU_USAGE_PCT     = 34
+const NET_IN_MBPS       = 72
+const NET_OUT_MBPS      = 48
+const ACTIVE_ALERTS     = 5
+const CRITICAL_ALERTS   = 2
+const WARNING_ALERTS    = 3
+
+const RECENT_ALERTS = [
+  { id:1, msg:'Camera offline detected',   detail:'Corridor - KZL-01',         time:'2m ago',  color:'text-red-400'    },
+  { id:2, msg:'Low storage warning',       detail:'NVR DS-7832NXI-K2',         time:'15m ago', color:'text-amber-400'  },
+  { id:3, msg:'Motion detected',           detail:'Parking Area - KZL-01',     time:'32m ago', color:'text-blue-400'   },
+  { id:4, msg:'Stream interrupted',        detail:'Garden Camera',             time:'1h ago',  color:'text-amber-400'  },
+  { id:5, msg:'New device connected',      detail:'MPH-01 - DS-7832NXI-Q1',   time:'2h ago',  color:'text-emerald-400'},
 ]
 
-const SYSTEM_STATUS = [
-  { name:'VMS Server',       status:'Online',   color:'#22c55e' },
-  { name:'Recording Server', status:'Online',   color:'#22c55e' },
-  { name:'Storage Status',   status:'63% Used', color:'#f59e0b' },
-  { name:'Network Status',   status:'Healthy',  color:'#22c55e' },
+const RECENT_ACTIVITY = [
+  { id:1, Icon:UserPlus,  msg:'Admin logged in',       detail:'From 192.168.1.10',         time:'5m ago'  },
+  { id:2, Icon:Camera,    msg:'Camera added',           detail:'Pantry - Camera 7',         time:'22m ago' },
+  { id:3, Icon:Settings,  msg:'Settings updated',       detail:'Stream quality changed',    time:'1h ago'  },
+  { id:4, Icon:FilmIcon,  msg:'Recording exported',     detail:'Lobby - Camera 3',          time:'2h ago'  },
+  { id:5, Icon:UserPlus,  msg:'User created',           detail:'operator@samator.id',       time:'3h ago'  },
 ]
 
-const CPU_DATA = [20,25,22,28,30,25,22,20,28,32,35,30,25,28,22,20,25,28,30,28,25,22,28,30,28,25,22,28]
-const NET_IN   = [40,45,50,48,55,60,58,52,48,55,65,70,68,60,55,58,62,68,72,70,65,60,65,70,72,68,65,72]
-const NET_OUT  = [20,22,25,28,30,32,28,25,22,28,32,35,38,35,32,30,32,35,38,42,45,42,38,40,45,48,44,48]
+const SYSTEM_HEALTH = [
+  { label:'CPU Usage',  Icon:Cpu,      value:`${CPU_USAGE_PCT}%`,             ok: CPU_USAGE_PCT < 80 },
+  { label:'Database',   Icon:Database, value:'Running',                        ok: true               },
+  { label:'Storage',    Icon:HardDrive,value:`${Math.round(STORAGE_USED_TB / STORAGE_TOTAL_TB * 100)}% used`, ok: (STORAGE_USED_TB / STORAGE_TOTAL_TB) < 0.85 },
+  { label:'Network',    Icon:Wifi,     value:`${NET_IN_MBPS}/${NET_OUT_MBPS} Mbps`, ok: true          },
+]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function sparkline(data, w, h) {
-  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1
-  return 'M' + data.map((v, i) =>
-    `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * h}`
-  ).join(' L')
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function StatCard({ iconBg, Icon, title, value, sub, subColor = '#22c55e' }) {
-  return (
-    <div style={{
-      background: 'var(--card)', border: '1px solid var(--border)',
-      borderRadius: 12, padding: '18px 20px',
-      display: 'flex', alignItems: 'center', gap: 16, flex: 1,
-    }}>
-      <div style={{
-        width: 52, height: 52, borderRadius: '50%', background: iconBg,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
-        <Icon size={24} color="#fff" />
-      </div>
-      <div>
-        <div style={{ fontSize: '.78rem', color: 'var(--muted-foreground)', marginBottom: 4 }}>{title}</div>
-        <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--foreground)', lineHeight: 1 }}>{value}</div>
-        <div style={{ fontSize: '.78rem', color: subColor, marginTop: 5 }}>{sub}</div>
-      </div>
-    </div>
-  )
+function nowStr() {
+  return new Date().toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
-function DonutChart({ online, offline, maintenance }) {
-  const total = online + offline + maintenance || 1
-  const r = 48, cx = 60, cy = 60, c = 2 * Math.PI * r
-
-  const arc = (start, frac, color) => (
-    <circle key={color}
-      cx={cx} cy={cy} r={r} fill="none"
-      stroke={color} strokeWidth={14}
-      strokeDasharray={`${frac * c} ${c - frac * c}`}
-      strokeDashoffset={-start * c}
-      transform={`rotate(-90,${cx},${cy})`}
-    />
-  )
-
-  const onF = online / total, offF = offline / total, mF = maintenance / total
+function DonutChart({ online, offline }) {
+  const total = online + offline || 1
+  const r = 44, cx = 54, cy = 54, c = 2 * Math.PI * r
+  const onF = online / total
 
   return (
-    <svg viewBox="0 0 120 120" width={110} height={110}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--secondary)" strokeWidth={14} />
-      {arc(0,          onF,  '#22c55e')}
-      {arc(onF,        offF, '#ef4444')}
-      {arc(onF + offF, mF,   '#f59e0b')}
-      <text x={cx} y={cy + 1}  textAnchor="middle" dominantBaseline="middle" fill="var(--foreground)"       fontSize="20" fontWeight="700">{online + offline + maintenance}</text>
-      <text x={cx} y={cy + 16} textAnchor="middle" dominantBaseline="middle" fill="var(--muted-foreground)" fontSize="9">Total</text>
+    <svg viewBox="0 0 108 108" width={100} height={100}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--secondary)" strokeWidth={12} />
+      <circle cx={cx} cy={cy} r={r} fill="none"
+        stroke="#10b981" strokeWidth={12}
+        strokeDasharray={`${onF * c} ${c - onF * c}`}
+        strokeDashoffset={0}
+        transform={`rotate(-90,${cx},${cy})`}
+      />
+      {offline > 0 && (
+        <circle cx={cx} cy={cy} r={r} fill="none"
+          stroke="#ef4444" strokeWidth={12}
+          strokeDasharray={`${(1 - onF) * c} ${onF * c}`}
+          strokeDashoffset={-(onF * c)}
+          transform={`rotate(-90,${cx},${cy})`}
+        />
+      )}
+      <text x={cx} y={cy}   textAnchor="middle" dominantBaseline="middle" fill="var(--foreground)"       fontSize="18" fontWeight="700">{total}</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" dominantBaseline="middle" fill="var(--muted-foreground)" fontSize="8">Total</text>
     </svg>
   )
 }
 
-function CameraTile({ camera }) {
-  const online = camera?.isOnline
+// ─── NVR Overview (replaces chart - shows real NVR status) ────────────────────
+
+function NvrOverview({ nvrs, loading }) {
+  const online  = nvrs.filter(n => n.sync_status === 'synced').length
+  const offline = nvrs.length - online
+
+  const sparkData = nvrs.slice(0, 12).map((n, i) => ({
+    label: n.code || `NVR ${i + 1}`,
+    ok: n.sync_status === 'synced',
+  }))
+
   return (
-    <div style={{
-      aspectRatio: '16/9', background: '#080e17',
-      border: '1px solid var(--border)',
-      borderRadius: 6, position: 'relative', overflow: 'hidden', cursor: 'pointer',
-    }}>
-      {camera ? (
-        <>
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0,
-            padding: '5px 7px',
-            background: 'linear-gradient(to bottom,rgba(0,0,0,0.75),transparent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 2,
-          }}>
-            <span style={{ fontSize: '.63rem', color: '#e2e8f0', fontWeight: 500 }}>
-              {camera.name}
-            </span>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: online ? '#22c55e' : '#ef4444',
-              boxShadow: online ? '0 0 4px #22c55e' : 'none',
-            }} />
-          </div>
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            opacity: online ? 0.12 : 0.04,
-          }}>
-            <Camera size={26} color="#94a3b8" />
-          </div>
-        </>
+    <div className="w-full h-full flex flex-col">
+      <div className="flex items-center gap-6 mb-3">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+          <span className="text-[11px] text-muted-foreground">Online NVRs: <span className="text-emerald-400 font-semibold">{loading ? '—' : online}</span></span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+          <span className="text-[11px] text-muted-foreground">Offline NVRs: <span className="text-red-400 font-semibold">{loading ? '—' : offline}</span></span>
+        </div>
+        <div className="ml-auto text-[10px] text-muted-foreground">{nvrs.length} total NVRs</div>
+      </div>
+
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground">Loading…</div>
+      ) : nvrs.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground">No NVRs found</div>
       ) : (
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Camera size={14} color="#334155" />
+        <div className="flex flex-wrap gap-1.5 content-start">
+          {nvrs.map((nvr) => {
+            const isOnline = nvr.sync_status === 'synced'
+            return (
+              <div
+                key={nvr.id}
+                title={`${nvr.branch_name || nvr.code} — ${nvr.nvr_ip || ''}`}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-medium border ${
+                  isOnline
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                    : 'bg-red-500/10 border-red-500/20 text-red-400'
+                }`}
+              >
+                <Monitor size={9} className="flex-shrink-0" />
+                <span className="max-w-[90px] truncate">{nvr.branch_name || nvr.code || nvr.id.slice(0, 8)}</span>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
   )
 }
 
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
+// ─── Dashboard View ───────────────────────────────────────────────────────────
 
 export default function DashboardView() {
-  const [nvrs,    setNvrs]    = useState([])
-  const [cameras, setCameras] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [grid,    setGrid]    = useState(16)
+  const [nvrs,      setNvrs]      = useState([])
+  const [cameras,   setCameras]   = useState([])
+  const [devices,   setDevices]   = useState([])
+  const [loading,   setLoading]   = useState(true)
+  const [now,       setNow]       = useState(nowStr())
 
   useEffect(() => { load() }, [])
 
+  // Tick clock every minute
+  useEffect(() => {
+    const t = setInterval(() => setNow(nowStr()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+
   async function load() {
+    setLoading(true)
     try {
-      const nvrList = await discoveryApi.getNvrs()
-      setNvrs(nvrList)
-      const results = await Promise.allSettled(
-        nvrList.map(nvr => discoveryApi.getChannels(nvr.id))
+      const [nvrList, devResult] = await Promise.allSettled([
+        discoveryApi.getNvrs(),
+        devicesApi.list(),
+      ])
+
+      const nvrs = nvrList.status === 'fulfilled' ? (nvrList.value || []) : []
+      setNvrs(nvrs)
+
+      const devs = devResult.status === 'fulfilled' ? (devResult.value?.items || []) : []
+      setDevices(devs)
+
+      const channelResults = await Promise.allSettled(
+        nvrs.map(nvr => discoveryApi.getChannels(nvr.id))
       )
       const all = []
-      nvrList.forEach((nvr, i) => {
-        if (results[i].status !== 'fulfilled') return
-        const chs = results[i].value?.channels || []
+      nvrs.forEach((nvr, i) => {
+        if (channelResults[i].status !== 'fulfilled') return
+        const chs = channelResults[i].value?.channels || []
         chs.forEach(ch => all.push({
-          id:        ch.id,
-          name:      ch.channel_name || `Channel ${ch.channel_id}`,
-          nvrCode:   nvr.code,
+          id:       ch.id,
+          isOnline: nvr.sync_status === 'synced' && ch.is_enabled === true,
           isEnabled: ch.is_enabled === true,
-          isOnline:  nvr.sync_status === 'synced' && ch.is_enabled === true,
         }))
       })
       setCameras(all)
@@ -169,241 +190,229 @@ export default function DashboardView() {
   const totalCams   = cameras.filter(c => c.isEnabled).length
   const onlineCams  = cameras.filter(c => c.isOnline).length
   const offlineCams = cameras.filter(c => c.isEnabled && !c.isOnline).length
-  const pct         = totalCams ? Math.round(onlineCams / totalCams * 100) : 0
+  const camPct      = totalCams ? Math.round(onlineCams / totalCams * 100) : 0
 
-  const cols     = grid === 4 ? 2 : grid === 9 ? 3 : 4
-  const gridCams = cameras.slice(0, grid)
-  const padded   = [...gridCams, ...Array(Math.max(0, grid - gridCams.length)).fill(null)]
+  const totalDevs   = devices.length
+  const onlineDevs  = devices.filter(d => d.status === 'ONLINE').length
+  const offlineDevs = devices.filter(d => d.status === 'OFFLINE').length
 
-  const card = (style = {}) => ({
-    background: 'var(--card)',
-    border: '1px solid var(--border)',
-    borderRadius: 12,
-    ...style,
-  })
+  const storagePct  = Math.round(STORAGE_USED_TB / STORAGE_TOTAL_TB * 100)
 
-  const hdr = {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '12px 16px', borderBottom: '1px solid var(--border)',
-  }
-
-  const viewAll = {
-    background: 'none', border: 'none', color: '#3b82f6', fontSize: '.78rem', cursor: 'pointer',
-  }
+  const statCards = [
+    {
+      label: 'Total Cameras',
+      value: loading ? '—' : String(totalCams),
+      Icon:  Camera,
+      color: 'text-blue-400',
+      bg:    'bg-blue-500/10 border-blue-500/20',
+      sub:   <span className="text-[10px] text-muted-foreground">Online <span className="text-emerald-400 font-medium">{loading ? '—' : onlineCams}</span> &bull; Offline <span className="text-red-400 font-medium">{loading ? '—' : offlineCams}</span></span>,
+    },
+    {
+      label: 'Online Cameras',
+      value: loading ? '—' : String(onlineCams),
+      Icon:  CircleDot,
+      color: 'text-emerald-400',
+      bg:    'bg-emerald-500/10 border-emerald-500/20',
+      sub:   <span className="text-[10px] text-muted-foreground"><span className="text-emerald-400 font-medium">{loading ? '—' : `${camPct}%`}</span> of total fleet</span>,
+    },
+    {
+      label: 'Total Devices',
+      value: loading ? '—' : String(totalDevs),
+      Icon:  Server,
+      color: 'text-violet-400',
+      bg:    'bg-violet-500/10 border-violet-500/20',
+      sub:   <span className="text-[10px] text-muted-foreground">Online <span className="text-emerald-400 font-medium">{loading ? '—' : onlineDevs}</span> &bull; Offline <span className="text-red-400 font-medium">{loading ? '—' : offlineDevs}</span></span>,
+    },
+    {
+      label: 'Active Alerts',
+      value: String(ACTIVE_ALERTS),
+      Icon:  AlertTriangle,
+      color: 'text-amber-400',
+      bg:    'bg-amber-500/10 border-amber-500/20',
+      sub:   <span className="text-[10px] text-muted-foreground"><span className="text-red-400 font-medium">{CRITICAL_ALERTS}</span> critical &bull; <span className="text-amber-400 font-medium">{WARNING_ALERTS}</span> warnings</span>,
+    },
+    {
+      label: 'Storage Used',
+      value: String(STORAGE_USED_TB),
+      Icon:  HardDrive,
+      color: 'text-sky-400',
+      bg:    'bg-sky-500/10 border-sky-500/20',
+      sub:   (
+        <div className="w-full mt-1">
+          <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
+            <span>{STORAGE_USED_TB} TB</span><span>{STORAGE_TOTAL_TB} TB</span>
+          </div>
+          <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
+            <div className="h-full bg-sky-400 rounded-full" style={{ width: `${storagePct}%` }} />
+          </div>
+        </div>
+      ),
+    },
+  ]
 
   return (
-    <div style={{
-      flex: 1, overflow: 'auto', background: 'var(--background)',
-      padding: 18, display: 'flex', flexDirection: 'column', gap: 14,
-      fontFamily: "'Inter',sans-serif",
-    }}>
+    <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-background">
 
-      {/* ── Stat cards ── */}
-      <div style={{ display: 'flex', gap: 14 }}>
-        <StatCard iconBg="rgba(59,130,246,0.22)"  Icon={Camera}   title="Total Cameras"  value={loading ? '—' : totalCams}  sub={loading ? '' : `Online ${onlineCams}`} />
-        <StatCard iconBg="rgba(34,197,94,0.22)"   Icon={Monitor}  title="Online Cameras" value={loading ? '—' : onlineCams} sub={loading ? '' : `${pct}%`} />
-        <StatCard iconBg="rgba(139,92,246,0.22)"  Icon={Bell}     title="Active Events"  value="12"                         sub="View all"     subColor="#3b82f6" />
-        <StatCard iconBg="rgba(245,158,11,0.22)"  Icon={Database} title="Total Storage"  value="45.2 TB"                    sub="63% Used"     subColor="#f59e0b" />
-      </div>
-
-      {/* ── Middle row: Live View + Recent Events ── */}
-      <div style={{ display: 'flex', gap: 14, minHeight: 380 }}>
-
-        {/* Live View */}
-        <div style={{ ...card(), flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-          <div style={hdr}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />
-              <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--foreground)' }}>Live View</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {[{ n: 4, label: '2×2' }, { n: 9, label: '3×3' }, { n: 16, label: '4×4' }].map(({ n, label }) => (
-                <button key={n} onClick={() => setGrid(n)} style={{
-                  padding: '3px 9px', borderRadius: 6, cursor: 'pointer',
-                  background: grid === n ? 'rgba(59,130,246,0.2)' : 'transparent',
-                  border: `1px solid ${grid === n ? '#3b82f6' : 'var(--border)'}`,
-                  color: grid === n ? '#3b82f6' : 'var(--muted-foreground)', fontSize: '.73rem',
-                }}>
-                  {label}
-                </button>
-              ))}
-              <button style={{ padding: '3px 9px', borderRadius: 6, background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted-foreground)', fontSize: '.73rem', cursor: 'pointer' }}>
-                {grid} Screens ▾
-              </button>
-              <button style={{ padding: 5, borderRadius: 6, background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted-foreground)', cursor: 'pointer', display: 'flex' }}>
-                <Maximize2 size={14} />
-              </button>
-            </div>
-          </div>
-
-          <div style={{
-            flex: 1, padding: 10, overflow: 'hidden',
-            display: 'grid', gridTemplateColumns: `repeat(${cols},1fr)`, gap: 6,
-          }}>
-            {padded.map((cam, i) => <CameraTile key={i} camera={cam} />)}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderTop: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6' }} />
-              <span style={{ fontSize: '.78rem', color: 'var(--muted-foreground)' }}>Live</span>
-            </div>
-            <div style={{ display: 'flex', gap: 2 }}>
-              {[Camera, Activity, Maximize2, RefreshCw].map((Icon, i) => (
-                <button key={i} style={{ padding: 6, borderRadius: 6, background: 'transparent', border: 'none', color: 'var(--muted-foreground)', cursor: 'pointer' }}>
-                  <Icon size={14} />
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Greeting */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-base font-semibold text-foreground">{greeting()}, Admin 👋</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {loading ? 'Loading system status…' : `${onlineCams} cameras online across ${nvrs.filter(n => n.sync_status === 'synced').length} NVRs.`}
+          </p>
         </div>
-
-        {/* Recent Events + System Status */}
-        <div style={{ ...card(), width: 280, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
-          <div style={hdr}>
-            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--foreground)' }}>Recent Events</span>
-            <button style={viewAll}>View all</button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock size={12} />
+            <span>{now}</span>
           </div>
-
-          <div style={{ flex: 1, overflow: 'auto' }}>
-            {RECENT_EVENTS.map(ev => (
-              <div key={ev.id}
-                style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--secondary)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <div style={{ width: 30, height: 30, borderRadius: '50%', background: `${ev.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                  <AlertCircle size={13} color={ev.color} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '.82rem', fontWeight: 600, color: 'var(--foreground)' }}>{ev.type}</div>
-                  <div style={{ fontSize: '.73rem', color: 'var(--muted-foreground)', marginTop: 2 }}>{ev.camera}</div>
-                  <div style={{ fontSize: '.7rem',  color: 'var(--muted-foreground)', marginTop: 2, opacity: 0.6 }}>{ev.time}</div>
-                </div>
-                <div style={{ width: 50, height: 34, borderRadius: 4, background: '#080e17', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Camera size={12} color="#334155" />
-                </div>
-              </div>
-            ))}
-
-            {/* System Status */}
-            <div style={{ padding: '12px 14px 8px', borderTop: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--foreground)' }}>System Status</span>
-                <button style={viewAll}>View all</button>
-              </div>
-              {SYSTEM_STATUS.map(s => (
-                <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <Server size={12} color="var(--muted-foreground)" />
-                    <span style={{ fontSize: '.78rem', color: 'var(--muted-foreground)' }}>{s.name}</span>
-                  </div>
-                  <span style={{ fontSize: '.75rem', fontWeight: 600, color: s.color }}>{s.status}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <button
+            onClick={load}
+            className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw size={13} />
+          </button>
         </div>
       </div>
 
-      {/* ── Bottom row ── */}
-      <div style={{ display: 'flex', gap: 14 }}>
-
-        {/* Device Status */}
-        <div style={{ ...card({ padding: 16 }), flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--foreground)' }}>Device Status</span>
-            <button style={viewAll}>View all</button>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <DonutChart online={onlineCams} offline={offlineCams} maintenance={0} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[
-                { label: 'Online',      count: onlineCams,  color: '#22c55e' },
-                { label: 'Offline',     count: offlineCams, color: '#ef4444' },
-                { label: 'Maintenance', count: 0,           color: '#f59e0b' },
-              ].map(({ label, count, color }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
-                    <span style={{ fontSize: '.8rem', color: 'var(--muted-foreground)' }}>{label}</span>
-                  </div>
-                  <span style={{ fontSize: '.8rem', color: 'var(--foreground)', fontWeight: 600 }}>
-                    {loading ? '—' : count}&nbsp;
-                    <span style={{ color: 'var(--muted-foreground)', fontWeight: 400 }}>
-                      ({loading || !totalCams ? '—' : `${Math.round(count / totalCams * 100)}%`})
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Storage Overview */}
-        <div style={{ ...card({ padding: 16 }), flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--foreground)' }}>Storage Overview</span>
-            <button style={viewAll}>View all</button>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: '.83rem', color: 'var(--muted-foreground)' }}>45.2 TB / 72 TB Used</span>
-            <span style={{ fontSize: '.83rem', fontWeight: 600, color: 'var(--foreground)' }}>63%</span>
-          </div>
-          <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--muted)', marginBottom: 14 }}>
-            <div style={{ width: '45%', background: '#3b82f6' }} />
-            <div style={{ width: '17%', background: '#8b5cf6' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 14 }}>
-            {[
-              { label: 'Recording', value: '32.6 TB', color: '#3b82f6' },
-              { label: 'Archive',   value: '8.4 TB',  color: '#8b5cf6' },
-              { label: 'Free',      value: '26.8 TB', color: 'var(--muted-foreground)' },
-            ].map(({ label, value, color }) => (
-              <div key={label} style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: color, display: 'inline-block' }} />
-                  <span style={{ fontSize: '.7rem', color: 'var(--muted-foreground)' }}>{label}</span>
-                </div>
-                <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--foreground)' }}>{value}</span>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-5 gap-3">
+        {statCards.map((card) => (
+          <div key={card.label} className={`rounded-lg border p-3.5 flex flex-col gap-1.5 bg-card ${card.bg}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground font-medium">{card.label}</span>
+              <div className={`w-7 h-7 rounded flex items-center justify-center ${card.bg}`}>
+                <card.Icon size={14} className={card.color} />
               </div>
-            ))}
+            </div>
+            <p className={`text-2xl font-bold tracking-tight ${card.color}`}>
+              {card.value}{card.label === 'Storage Used' ? ' TB' : ''}
+            </p>
+            {card.sub}
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* CPU & Network */}
-        <div style={{ ...card({ padding: 16 }), flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: '.9rem', fontWeight: 600, color: 'var(--foreground)' }}>CPU & Network</span>
-            <button style={{ padding: '3px 8px', borderRadius: 6, background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted-foreground)', fontSize: '.73rem', cursor: 'pointer' }}>
-              Today ▾
+      {/* Middle Row */}
+      <div className="grid grid-cols-12 gap-3">
+        {/* NVR Overview (real data) */}
+        <div className="col-span-7 bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-xs font-semibold text-foreground">NVR Overview</h3>
+              <p className="text-[10px] text-muted-foreground">Live sync status per NVR</p>
+            </div>
+            <button onClick={load} className="text-[10px] text-muted-foreground hover:text-foreground border border-border rounded px-2 py-0.5 flex items-center gap-1">
+              <RefreshCw size={9} /> Refresh
             </button>
           </div>
-          <div style={{ display: 'flex', gap: 20, marginBottom: 10 }}>
-            <div>
-              <div style={{ fontSize: '.7rem', color: 'var(--muted-foreground)' }}>CPU Usage</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--foreground)' }}>28%</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '.7rem', color: 'var(--muted-foreground)' }}>Network (In/Out)</div>
-              <div style={{ fontSize: '.95rem', fontWeight: 700, color: 'var(--foreground)', marginTop: 4 }}>72 Mbps / 48 Mbps</div>
+          <div className="w-full" style={{ minHeight: 120 }}>
+            <NvrOverview nvrs={nvrs} loading={loading} />
+          </div>
+        </div>
+
+        {/* Device Status Donut (real data) */}
+        <div className="col-span-2 bg-card border border-border rounded-lg p-4 flex flex-col">
+          <h3 className="text-xs font-semibold text-foreground mb-2">Camera Status</h3>
+          <div className="flex-1 flex flex-col items-center justify-center gap-2">
+            <DonutChart online={onlineCams} offline={offlineCams} />
+            <div className="space-y-1 w-full">
+              {[
+                { label: 'Online',  count: onlineCams,  color: '#10b981' },
+                { label: 'Offline', count: offlineCams, color: '#ef4444' },
+              ].map(({ label, count, color }) => (
+                <div key={label} className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <span className="text-muted-foreground">{label}</span>
+                  </div>
+                  <span className="text-foreground font-medium">{loading ? '—' : count}</span>
+                </div>
+              ))}
             </div>
           </div>
-          <svg width="100%" height="64" viewBox="0 0 300 64" preserveAspectRatio="none" style={{ flex: 1 }}>
-            <path d={sparkline(CPU_DATA, 300, 64)} fill="none" stroke="#3b82f6" strokeWidth="1.5" />
-            <path d={sparkline(NET_IN,   300, 64)} fill="none" stroke="#22c55e" strokeWidth="1.5" />
-            <path d={sparkline(NET_OUT,  300, 64)} fill="none" stroke="#f59e0b" strokeWidth="1.5" />
-          </svg>
-          <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
-            {[
-              { label: 'CPU',         color: '#3b82f6' },
-              { label: 'Network In',  color: '#22c55e' },
-              { label: 'Network Out', color: '#f59e0b' },
-            ].map(({ label, color }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 16, height: 2, background: color, display: 'inline-block', borderRadius: 1 }} />
-                <span style={{ fontSize: '.7rem', color: 'var(--muted-foreground)' }}>{label}</span>
+        </div>
+
+        {/* Recent Alerts (static — edit RECENT_ALERTS above) */}
+        <div className="col-span-3 bg-card border border-border rounded-lg p-4 flex flex-col">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-foreground">Recent Alerts</h3>
+            <button className="text-[10px] text-muted-foreground hover:text-foreground">View All</button>
+          </div>
+          <div className="flex-1 space-y-2.5 overflow-y-auto">
+            {RECENT_ALERTS.map((alert) => (
+              <div key={alert.id} className="flex items-start gap-2">
+                <AlertTriangle size={12} className={`${alert.color} flex-shrink-0 mt-0.5`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-foreground leading-tight truncate">{alert.msg}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{alert.detail}</p>
+                </div>
+                <span className="text-[9px] text-muted-foreground whitespace-nowrap flex-shrink-0">{alert.time}</span>
               </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Row */}
+      <div className="grid grid-cols-12 gap-3">
+        {/* Recent Activity (static — edit RECENT_ACTIVITY above) */}
+        <div className="col-span-5 bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-foreground">Recent Activity</h3>
+            <button className="text-[10px] text-muted-foreground hover:text-foreground">View All</button>
+          </div>
+          <div className="space-y-3">
+            {RECENT_ACTIVITY.map(({ id, Icon, msg, detail, time }) => (
+              <div key={id} className="flex items-start gap-2.5">
+                <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center flex-shrink-0">
+                  <Icon size={11} className="text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-foreground font-medium leading-tight">{msg}</p>
+                  <p className="text-[10px] text-muted-foreground">{detail}</p>
+                </div>
+                <span className="text-[9px] text-muted-foreground whitespace-nowrap">{time}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* System Health (static — edit SYSTEM_HEALTH above) */}
+        <div className="col-span-4 bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-foreground">System Health</h3>
+          </div>
+          <div className="space-y-2.5">
+            {SYSTEM_HEALTH.map(({ label, Icon, value, ok }) => (
+              <div key={label} className="flex items-center gap-2.5">
+                <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 ${ok ? 'bg-emerald-500/15' : 'bg-amber-500/15'}`}>
+                  <Icon size={12} className={ok ? 'text-emerald-400' : 'text-amber-400'} />
+                </div>
+                <span className="text-[11px] text-foreground flex-1">{label}</span>
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ok ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="col-span-3 bg-card border border-border rounded-lg p-4">
+          <h3 className="text-xs font-semibold text-foreground mb-3">Quick Actions</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { Icon:Eye,      label:'Live View',   color:'text-blue-400',    bg:'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20'      },
+              { Icon:Play,     label:'Playback',    color:'text-violet-400',  bg:'bg-violet-500/10 hover:bg-violet-500/20 border-violet-500/20' },
+              { Icon:Camera,   label:'Add Camera',  color:'text-emerald-400', bg:'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20' },
+              { Icon:Download, label:'Export',      color:'text-amber-400',   bg:'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20'    },
+            ].map(({ Icon, label, color, bg }) => (
+              <button key={label} className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-colors ${bg}`}>
+                <Icon size={16} className={color} />
+                <span className="text-[10px] text-foreground font-medium">{label}</span>
+              </button>
             ))}
           </div>
         </div>
