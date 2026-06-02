@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 class DeviceBase(BaseModel):
-    site_id: UUID
+    site_id: Optional[UUID] = None
     device_type: str = Field(..., max_length=50)
     vendor: Optional[str] = Field(None, max_length=100)
     model: Optional[str] = Field(None, max_length=100)

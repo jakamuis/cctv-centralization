@@ -365,6 +365,65 @@ async def list_nvr_channels(
 
 
 # ---------------------------------------------------------------------------
+# PATCH /discovery/nvrs/{nvr_id}  — update NVR credentials / settings
+# ---------------------------------------------------------------------------
+
+class NVRUpdateRequest(BaseModel):
+    branch_name: Optional[str] = None
+    nvr_ip:      Optional[str] = None
+    http_port:   Optional[int] = None
+    rtsp_port:   Optional[int] = None
+    username:    Optional[str] = None
+    password:    Optional[str] = None
+    vendor:      Optional[str] = None
+    timezone:    Optional[str] = None
+
+
+@router.patch(
+    "/nvrs/{nvr_id}",
+    summary="Update NVR settings (credentials, vendor, IP, etc.)",
+    status_code=200,
+)
+async def update_nvr(
+    nvr_id: UUID,
+    body: NVRUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    repo = DiscoveryRepository(db)
+    nvr = await repo.get_nvr_by_id(nvr_id)
+    if not nvr:
+        raise HTTPException(status_code=404, detail=f"NVR {nvr_id} not found")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(nvr, field, value)
+
+    await db.commit()
+    await db.refresh(nvr)
+    return _nvr_to_dict(nvr)
+
+
+# ---------------------------------------------------------------------------
+# DELETE /discovery/nvrs/{nvr_id}  — remove NVR and its channels
+# ---------------------------------------------------------------------------
+
+@router.delete(
+    "/nvrs/{nvr_id}",
+    summary="Delete a discovered NVR and all its channels",
+    status_code=204,
+)
+async def delete_nvr(
+    nvr_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    repo = DiscoveryRepository(db)
+    nvr = await repo.get_nvr_by_id(nvr_id)
+    if not nvr:
+        raise HTTPException(status_code=404, detail=f"NVR {nvr_id} not found")
+    await repo.delete_nvr(nvr_id)
+    return None
+
+
+# ---------------------------------------------------------------------------
 # POST /discovery/nvrs/{nvr_id}/channels/{channel_id}/stream
 # ---------------------------------------------------------------------------
 

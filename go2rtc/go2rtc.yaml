@@ -110,52 +110,10 @@ streams:
     - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/11#video=h264
   depo-pangkalan-bun_3:
     - ffmpeg:rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/301#video=h264
-  test_depo-pangkalan-bun_1:
-    - rtsp://sandana%40gk:samator%232017@10.70.224.200:554/Streaming/Channels/101
-  test_sandana-baswara-gas_1:
-    - ffmpeg:http://admin:123456@10.70.207.200:80/virtualcamera/channel1?media
-  test_sgi-boyolali_1:
-    - ffmpeg:http://admin:123456@192.168.17.200:80/virtualcamera/channel1?media
-  test_sgi-cikupa_1:
-    - rtsp://admin:samator%4088@192.168.74.200:554/Streaming/Channels/101
-  test_sgi-cilegon_1:
-    - rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/101
-  test_sgi-duri_1:
-    - ffmpeg:http://admin:123456@192.168.72.200:80/virtualcamera/channel1?media
-  test_sgi-kutai_1:
-    - ffmpeg:http://admin:123456@10.70.155.200:80/virtualcamera/channel1?media
-  test_sgi-lubuk-gaung-dumai_1:
-    - rtsp://admin:Samator01@192.168.94.200:554/Streaming/Channels/101
-  test_sgi-malang_1:
-    - ffmpeg:http://adminmalang:123456@10.70.139.200:80/virtualcamera/channel1?media
-  test_sgi-sibolga_1:
-    - ffmpeg:http://sgisibolga:samator%232017@192.168.93.200:80/virtualcamera/channel1?media
-  test_sgi-tuban_1:
-    - ffmpeg:http://admin:123456@10.70.141.200:80/virtualcamera/channel1?media
-  test_sig-baturaja_1:
-    - rtsp://admin:samator88@10.70.203.200:554/Streaming/Channels/101
-  test_sig-bekasi-cibitung_1:
-    - rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/101
-  test_sig-gorontalo_1:
-    - ffmpeg:http://agigorontalo:samator%232017@192.168.68.200:80/virtualcamera/channel1?media
-  test_sig-kendal-1_1:
-    - rtsp://admin:Indogas%2A19%23@192.168.2.100:554/Streaming/Channels/101
-  test_sig-lampung-3_1:
-    - rtsp://admin:12345678s@10.70.225.200:554/Streaming/Channels/101
-  test_sig-medan_1:
-    - rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/101
-  test_sig-pier_1:
-    - ffmpeg:http://admin:123456@192.168.15.200:80/virtualcamera/channel1?media
-  test_sig-ternate_1:
-    - ffmpeg:http://admin:123456@10.70.197.200:80/virtualcamera/channel1?media
-  test_smt-cilamaya_1:
-    - rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/101
   sandana-baswara-gas_1:
     - exec:python3 /scripts/acti_pipe.py 10.70.207.200 1 admin 123456#video=h264
   sgi-cilegon_2:
     - ffmpeg:rtsp://sgicilegon:samator%232017@10.70.159.241:554/Streaming/Channels/2#video=h264
-  test_cilegon_ch1:
-    - ffmpeg:rtsp://sgicilegon:samator#2017@10.70.159.241:554/Streaming/Channels/1#video=h264
   sgi-kutai_1:
     - exec:python3 /scripts/acti_pipe.py 10.70.155.200 1 admin 123456#video=h264
   sgi-lubuk-gaung-dumai_3:
@@ -252,3 +210,69 @@ streams:
     - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/16#video=h264
   smt-cilamaya_2:
     - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/2#video=h264
+  arohera-lt3_1:
+    - ffmpeg:rtsp://admin:samator%4088@10.11.32.200:554/Streaming/Channels/101#video=h264
+  arohera-lt3_2:
+    - ffmpeg:rtsp://admin:samator%4088@10.11.32.200:554/Streaming/Channels/201#video=h264
+  arohera-lt3_3:
+    - ffmpeg:rtsp://admin:samator%4088@10.11.32.200:554/Streaming/Channels/301#video=h264
+  arohera-lt3_4:
+    - ffmpeg:rtsp://admin:samator%4088@10.11.32.200:554/Streaming/Channels/401#video=h264
+  arohera-lt3_5:
+    - ffmpeg:rtsp://admin:samator%4088@10.11.32.200:554/Streaming/Channels/501#video=h264
+  sgi-lubuk-gaung-dumai_2:
+    - ffmpeg:rtsp://admin:Samator01@192.168.94.200:554/Streaming/Channels/201#video=h264
+  sgi-lubuk-gaung-dumai_1:
+    - ffmpeg:rtsp://admin:Samator01@192.168.94.200:554/Streaming/Channels/101#video=h264
+  sgi-lubuk-gaung-dumai_4:
+    - ffmpeg:rtsp://admin:Samator01@192.168.94.200:554/Streaming/Channels/401#video=h264
+  sgi-lubuk-gaung-dumai_5:
+    - ffmpeg:rtsp://admin:Samator01@192.168.94.200:554/Streaming/Channels/501#video=h264
+  sig-baturaja_2:
+    - ffmpeg:rtsp://admin:samator88@10.70.203.200:554/Streaming/Channels/201#video=h264
+  sig-baturaja_4:
+    - ffmpeg:rtsp://admin:samator88@10.70.203.200:554/Streaming/Channels/401#video=h264
+  sig-baturaja_3:
+    - ffmpeg:rtsp://admin:samator88@10.70.203.200:554/Streaming/Channels/301#video=h264
+  sig-baturaja_5:
+    - ffmpeg:rtsp://admin:samator88@10.70.203.200:554/Streaming/Channels/501#video=h264
+  sig-baturaja_1:
+    - ffmpeg:rtsp://admin:samator88@10.70.203.200:554/Streaming/Channels/101#video=h264
+  sig-baturaja_6:
+    - ffmpeg:rtsp://admin:samator88@10.70.203.200:554/Streaming/Channels/601#video=h264
+  sig-bekasi-cibitung_11:
+    - ffmpeg:rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/1101#video=h264
+  sig-bekasi-cibitung_10:
+    - ffmpeg:rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/1001#video=h264
+  sig-bekasi-cibitung_12:
+    - ffmpeg:rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/1201#video=h264
+  sig-bekasi-cibitung_13:
+    - ffmpeg:rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/1301#video=h264
+  sig-bekasi-cibitung_1:
+    - ffmpeg:rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/101#video=h264
+  sig-bekasi-cibitung_14:
+    - ffmpeg:rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/1401#video=h264
+  sig-bekasi-cibitung_15:
+    - ffmpeg:rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/1501#video=h264
+  sig-bekasi-cibitung_16:
+    - ffmpeg:rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/1601#video=h264
+  sig-bekasi-cibitung_17:
+    - ffmpeg:rtsp://admin:Adm112233@192.168.4.200:554/Streaming/Channels/1701#video=h264
+
+  # --- sig-gorontalo (SIG Gorontalo, 192.168.68.200, ACTi SNVR) ---
+  sig-gorontalo_1:
+    - exec:python3 /scripts/acti_pipe.py 192.168.68.200 1 agigorontalo samator%232017#video=h264
+  sig-gorontalo_2:
+    - exec:python3 /scripts/acti_pipe.py 192.168.68.200 2 agigorontalo samator%232017#video=h264
+  sig-gorontalo_3:
+    - exec:python3 /scripts/acti_pipe.py 192.168.68.200 3 agigorontalo samator%232017#video=h264
+  sig-gorontalo_4:
+    - exec:python3 /scripts/acti_pipe.py 192.168.68.200 4 agigorontalo samator%232017#video=h264
+  sig-gorontalo_5:
+    - exec:python3 /scripts/acti_pipe.py 192.168.68.200 5 agigorontalo samator%232017#video=h264
+  sig-gorontalo_6:
+    - exec:python3 /scripts/acti_pipe.py 192.168.68.200 6 agigorontalo samator%232017#video=h264
+  sig-gorontalo_7:
+    - exec:python3 /scripts/acti_pipe.py 192.168.68.200 7 agigorontalo samator%232017#video=h264
+  sig-gorontalo_8:
+    - exec:python3 /scripts/acti_pipe.py 192.168.68.200 8 agigorontalo samator%232017#video=h264

@@ -54,9 +54,7 @@ class DeviceService:
         return await self.repo.create(device)
 
     async def update_device(self, device: Device, device_in: DeviceUpdate) -> Device:
-        for field, value in device_in.model_dump(exclude_unset=True).items():
-            setattr(device, field, value)
-        return await self.repo.update(device)
+        return await self.repo.update(device, device_in)
 
     async def soft_delete_device(self, device: Device) -> None:
         await self.repo.soft_delete(device)

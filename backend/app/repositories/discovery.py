@@ -223,6 +223,16 @@ class DiscoveryRepository:
         )
         return len(rows)
 
+    async def delete_nvr(self, nvr_id: UUID) -> None:
+        """Delete a DiscoveredNVR and cascade to its channels."""
+        await self.db.execute(
+            delete(NVRChannel).where(NVRChannel.nvr_id == nvr_id)
+        )
+        await self.db.execute(
+            delete(DiscoveredNVR).where(DiscoveredNVR.id == nvr_id)
+        )
+        await self.db.commit()
+
     async def list_channels(
         self,
         nvr_id: UUID,

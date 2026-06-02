@@ -1,65 +1,61 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Server, Pencil, Trash2, X, RefreshCw, Search } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "../components/ui/sheet";
+  Server, RefreshCw, Search, Monitor, Wifi, WifiOff,
+  AlertTriangle, ShieldOff, Plus, Pencil, Trash2, Loader2,
+} from "lucide-react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "../components/ui/table";
-import { devicesApi } from "../api";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "../components/ui/dialog";
+import { discoveryApi } from "../api";
 
-const DEVICE_TYPES   = ["NVR", "CAMERA", "ENCODER", "DECODER", "SWITCH", "SERVER"];
-const DEVICE_STATUSES = ["ONLINE", "OFFLINE", "DEGRADED", "UNKNOWN", "MAINTENANCE"];
-
-const EMPTY_FORM = {
-  device_type:               "NVR",
-  vendor:                    "",
-  model:                     "",
-  serial_number:             "",
-  firmware_version:          "",
-  ip_address:                "",
-  port:                      "",
-  username:                  "",
-  password:                  "",
-  mac_address:               "",
-  site_id:                   "",
-  status:                    "UNKNOWN",
-  heartbeat_interval_seconds: 30,
-  offline_threshold_seconds:  120,
-};
+// ─── Status badge ─────────────────────────────────────────────────────────────
 
 const STATUS_STYLE = {
-  ONLINE:      "bg-emerald-500/15 text-emerald-400",
-  OFFLINE:     "bg-red-500/15 text-red-400",
-  DEGRADED:    "bg-amber-500/15 text-amber-400",
-  MAINTENANCE: "bg-blue-500/15 text-blue-400",
-  UNKNOWN:     "bg-muted text-muted-foreground",
+  synced:      { cls: "bg-emerald-500/15 text-emerald-400", Icon: Wifi,          label: "Synced"      },
+  unreachable: { cls: "bg-red-500/15 text-red-400",         Icon: WifiOff,       label: "Unreachable" },
+  failed:      { cls: "bg-amber-500/15 text-amber-400",     Icon: AlertTriangle, label: "Failed"      },
+  auth_error:  { cls: "bg-orange-500/15 text-orange-400",   Icon: ShieldOff,     label: "Auth Error"  },
 };
 
-function StatusBadge({ status }) {
+function SyncBadge({ status }) {
+  const s = STATUS_STYLE[status] || { cls: "bg-secondary text-muted-foreground", Icon: Server, label: status || "Unknown" };
+  const { cls, Icon, label } = s;
   return (
-    <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${STATUS_STYLE[status] || STATUS_STYLE.UNKNOWN}`}>
-      {status || "—"}
+    <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded ${cls}`}>
+      <Icon size={10} className="flex-shrink-0" />
+      {label}
     </span>
   );
 }
 
-const inputCls  = "w-full bg-muted border border-border rounded px-2.5 py-1.5 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary/50 transition-colors";
-const selectCls = `${inputCls} cursor-pointer`;
+function VendorBadge({ vendor }) {
+  if (!vendor) return <span className="text-muted-foreground">—</span>;
+  const map = {
+    hikvision: "bg-blue-500/15 text-blue-400",
+    acti_snvr: "bg-violet-500/15 text-violet-400",
+    acti:      "bg-violet-500/15 text-violet-400",
+  };
+  return (
+    <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${map[vendor?.toLowerCase()] || "bg-secondary text-muted-foreground"}`}>
+      {vendor === "acti_snvr" ? "ACTi SNVR" : vendor}
+    </span>
+  );
+}
 
-function FormField({ label, required, children }) {
+function fmt(dt) {
+  if (!dt) return "—";
+  return new Date(dt).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" });
+}
+
+// ─── Form field ───────────────────────────────────────────────────────────────
+
+function Field({ label, required, children }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[11px] text-muted-foreground">
+      <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {children}
@@ -67,352 +63,300 @@ function FormField({ label, required, children }) {
   );
 }
 
-// ─── Add / Edit Drawer ────────────────────────────────────────────────────────
+const inputCls = "bg-muted border border-border rounded px-2.5 py-1.5 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-blue-500 transition-colors w-full";
+const selectCls = `${inputCls} cursor-pointer`;
 
-function DeviceDrawer({ open, onOpenChange, editTarget, onSaved }) {
-  const [form, setForm]           = useState(EMPTY_FORM);
-  const [saving, setSaving]       = useState(false);
-  const [saveError, setSaveError] = useState(null);
+// ─── Add / Edit modal ─────────────────────────────────────────────────────────
+
+const EMPTY_FORM = {
+  branch_name: "", nvr_ip: "", http_port: "80", rtsp_port: "554",
+  username: "", password: "", vendor: "hikvision", timezone: "WIB",
+};
+
+function NVRFormModal({ open, onClose, onSaved, editNvr }) {
+  const isEdit = Boolean(editNvr);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!open) return;
-    setSaveError(null);
-    if (editTarget) {
-      setForm({
-        device_type:               editTarget.device_type  || "NVR",
-        vendor:                    editTarget.vendor        || "",
-        model:                     editTarget.model         || "",
-        serial_number:             editTarget.serial_number || "",
-        firmware_version:          editTarget.firmware_version || "",
-        ip_address:                editTarget.ip_address    || "",
-        port:                      editTarget.port          ?? "",
-        username:                  editTarget.username      || "",
-        password:                  "",
-        mac_address:               editTarget.mac_address   || "",
-        site_id:                   editTarget.site_id       || "",
-        status:                    editTarget.status        || "UNKNOWN",
-        heartbeat_interval_seconds: editTarget.heartbeat_interval_seconds ?? 30,
-        offline_threshold_seconds:  editTarget.offline_threshold_seconds  ?? 120,
-      });
-    } else {
-      setForm(EMPTY_FORM);
+    if (open) {
+      setError(null);
+      setSaving(false);
+      if (isEdit) {
+        setForm({
+          branch_name: editNvr.branch_name || "",
+          nvr_ip:      editNvr.nvr_ip      || "",
+          http_port:   String(editNvr.http_port  ?? 80),
+          rtsp_port:   String(editNvr.rtsp_port  ?? 554),
+          username:    editNvr.username    || "",
+          password:    "",
+          vendor:      editNvr.vendor      || "hikvision",
+          timezone:    editNvr.timezone    || "WIB",
+        });
+      } else {
+        setForm(EMPTY_FORM);
+      }
     }
-  }, [open, editTarget]);
+  }, [open, editNvr, isEdit]);
 
-  function set(key, value) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  function set(key, val) {
+    setForm(prev => ({ ...prev, [key]: val }));
   }
 
-  async function handleSave() {
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
     setSaving(true);
-    setSaveError(null);
     try {
       const payload = {
-        device_type:               form.device_type,
-        vendor:                    form.vendor    || null,
-        model:                     form.model     || null,
-        serial_number:             form.serial_number    || null,
-        firmware_version:          form.firmware_version || null,
-        ip_address:                form.ip_address || null,
-        port:                      form.port !== "" ? Number(form.port) : null,
-        username:                  form.username  || null,
-        mac_address:               form.mac_address || null,
-        site_id:                   form.site_id   || null,
-        status:                    form.status,
-        heartbeat_interval_seconds: Number(form.heartbeat_interval_seconds) || 30,
-        offline_threshold_seconds:  Number(form.offline_threshold_seconds)  || 120,
+        branch_name: form.branch_name.trim(),
+        nvr_ip:      form.nvr_ip.trim(),
+        http_port:   parseInt(form.http_port, 10) || 80,
+        rtsp_port:   parseInt(form.rtsp_port, 10) || 554,
+        username:    form.username.trim(),
+        vendor:      form.vendor,
+        timezone:    form.timezone,
       };
-      if (form.password) payload.encrypted_password = form.password;
+      if (form.password) payload.password = form.password;
 
-      if (editTarget) {
-        await devicesApi.update(editTarget.id, payload);
+      if (isEdit) {
+        await discoveryApi.updateNvr(editNvr.id, payload);
       } else {
-        await devicesApi.create(payload);
+        if (!form.password) throw new Error("Password is required for new devices.");
+        payload.password = form.password;
+        await discoveryApi.addNvr(payload);
       }
-
-      onOpenChange(false);
       onSaved();
+      onClose();
     } catch (err) {
-      setSaveError(err.message);
+      setError(err.message || "Something went wrong.");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-[480px] sm:max-w-[480px] bg-card border-l border-border flex flex-col p-0 gap-0"
-      >
-        <SheetHeader className="px-5 py-4 border-b border-border">
-          <SheetTitle className="text-sm font-semibold">
-            {editTarget ? "Edit Device" : "Add Device"}
-          </SheetTitle>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Device" : "Add Device"}</DialogTitle>
+        </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5">
-          {/* Type + Status */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 pt-1">
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Device Type" required>
-              <select
-                value={form.device_type}
-                onChange={(e) => set("device_type", e.target.value)}
-                className={selectCls}
-              >
-                {DEVICE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            <Field label="Branch Name" required>
+              <input className={inputCls} value={form.branch_name}
+                onChange={e => set("branch_name", e.target.value)}
+                placeholder="Branch 01" required />
+            </Field>
+            <Field label="NVR IP" required>
+              <input className={inputCls} value={form.nvr_ip}
+                onChange={e => set("nvr_ip", e.target.value)}
+                placeholder="192.168.1.1" required />
+            </Field>
+            <Field label="HTTP Port">
+              <input className={inputCls} type="number" value={form.http_port}
+                onChange={e => set("http_port", e.target.value)}
+                placeholder="80" min={1} max={65535} />
+            </Field>
+            <Field label="RTSP Port">
+              <input className={inputCls} type="number" value={form.rtsp_port}
+                onChange={e => set("rtsp_port", e.target.value)}
+                placeholder="554" min={1} max={65535} />
+            </Field>
+            <Field label="Username" required>
+              <input className={inputCls} value={form.username}
+                onChange={e => set("username", e.target.value)}
+                placeholder="admin" required autoComplete="username" />
+            </Field>
+            <Field label={isEdit ? "Password (leave blank to keep)" : "Password"} required={!isEdit}>
+              <input className={inputCls} type="password" value={form.password}
+                onChange={e => set("password", e.target.value)}
+                placeholder={isEdit ? "••••••••" : "Enter password"}
+                required={!isEdit} autoComplete="new-password" />
+            </Field>
+            <Field label="Vendor">
+              <select className={selectCls} value={form.vendor}
+                onChange={e => set("vendor", e.target.value)}>
+                <option value="hikvision">Hikvision</option>
+                <option value="acti_snvr">ACTi SNVR</option>
               </select>
-            </FormField>
-            <FormField label="Status" required>
-              <select
-                value={form.status}
-                onChange={(e) => set("status", e.target.value)}
-                className={selectCls}
-              >
-                {DEVICE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </Field>
+            <Field label="Timezone">
+              <select className={selectCls} value={form.timezone}
+                onChange={e => set("timezone", e.target.value)}>
+                <option value="WIB">WIB (UTC+7)</option>
+                <option value="WITA">WITA (UTC+8)</option>
+                <option value="WIT">WIT (UTC+9)</option>
               </select>
-            </FormField>
+            </Field>
           </div>
 
-          {/* Vendor + Model */}
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Vendor">
-              <input
-                value={form.vendor}
-                onChange={(e) => set("vendor", e.target.value)}
-                placeholder="e.g. Hikvision"
-                className={inputCls}
-              />
-            </FormField>
-            <FormField label="Model">
-              <input
-                value={form.model}
-                onChange={(e) => set("model", e.target.value)}
-                placeholder="e.g. DS-7616NI"
-                className={inputCls}
-              />
-            </FormField>
-          </div>
-
-          {/* IP + Port */}
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="IP Address">
-              <input
-                value={form.ip_address}
-                onChange={(e) => set("ip_address", e.target.value)}
-                placeholder="192.168.1.100"
-                className={inputCls}
-              />
-            </FormField>
-            <FormField label="Port">
-              <input
-                type="number"
-                value={form.port}
-                onChange={(e) => set("port", e.target.value)}
-                placeholder="80"
-                className={inputCls}
-              />
-            </FormField>
-          </div>
-
-          {/* Username + Password */}
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Username">
-              <input
-                value={form.username}
-                onChange={(e) => set("username", e.target.value)}
-                placeholder="admin"
-                className={inputCls}
-              />
-            </FormField>
-            <FormField label={editTarget ? "Password (blank = unchanged)" : "Password"}>
-              <input
-                type="password"
-                value={form.password}
-                onChange={(e) => set("password", e.target.value)}
-                placeholder="••••••••"
-                className={inputCls}
-              />
-            </FormField>
-          </div>
-
-          {/* Serial + Firmware */}
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Serial Number">
-              <input
-                value={form.serial_number}
-                onChange={(e) => set("serial_number", e.target.value)}
-                placeholder="SN12345678"
-                className={inputCls}
-              />
-            </FormField>
-            <FormField label="Firmware Version">
-              <input
-                value={form.firmware_version}
-                onChange={(e) => set("firmware_version", e.target.value)}
-                placeholder="V4.12.0"
-                className={inputCls}
-              />
-            </FormField>
-          </div>
-
-          {/* MAC + Site ID */}
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="MAC Address">
-              <input
-                value={form.mac_address}
-                onChange={(e) => set("mac_address", e.target.value)}
-                placeholder="AA:BB:CC:DD:EE:FF"
-                className={inputCls}
-              />
-            </FormField>
-            <FormField label="Site ID">
-              <input
-                value={form.site_id}
-                onChange={(e) => set("site_id", e.target.value)}
-                placeholder="UUID"
-                className={inputCls}
-              />
-            </FormField>
-          </div>
-
-          {/* Heartbeat + Offline threshold */}
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Heartbeat Interval (s)">
-              <input
-                type="number"
-                value={form.heartbeat_interval_seconds}
-                onChange={(e) => set("heartbeat_interval_seconds", e.target.value)}
-                className={inputCls}
-              />
-            </FormField>
-            <FormField label="Offline Threshold (s)">
-              <input
-                type="number"
-                value={form.offline_threshold_seconds}
-                onChange={(e) => set("offline_threshold_seconds", e.target.value)}
-                className={inputCls}
-              />
-            </FormField>
-          </div>
-
-          {saveError && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-3 py-2 leading-relaxed">
-              {saveError}
-            </p>
+          {error && (
+            <p className="text-[11px] text-red-400 bg-red-500/10 px-2.5 py-1.5 rounded">{error}</p>
           )}
-        </div>
 
-        <SheetFooter className="flex flex-row gap-2 px-5 py-4 border-t border-border">
-          <button
-            onClick={() => onOpenChange(false)}
-            className="flex-1 px-3 py-2 rounded border border-border text-xs text-foreground hover:bg-secondary transition-colors"
-          >
+          <DialogFooter>
+            <button type="button" onClick={onClose}
+              className="px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:bg-secondary transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50">
+              {saving && <Loader2 size={11} className="animate-spin" />}
+              {isEdit ? "Save Changes" : "Add & Probe"}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Delete confirm modal ─────────────────────────────────────────────────────
+
+function DeleteModal({ nvr, onClose, onDeleted }) {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError(null);
+    try {
+      await discoveryApi.deleteNvr(nvr.id);
+      onDeleted();
+      onClose();
+    } catch (err) {
+      setError(err.message || "Delete failed.");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <Dialog open={Boolean(nvr)} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Delete Device</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground mt-1">
+          This will permanently remove{" "}
+          <span className="text-foreground font-medium">
+            {nvr?.branch_name || nvr?.code}
+          </span>{" "}
+          ({nvr?.nvr_ip}) and all its channels. This cannot be undone.
+        </p>
+        {error && (
+          <p className="text-[11px] text-red-400 bg-red-500/10 px-2.5 py-1.5 rounded">{error}</p>
+        )}
+        <DialogFooter>
+          <button onClick={onClose}
+            className="px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:bg-secondary transition-colors">
             Cancel
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 px-3 py-2 rounded bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors"
-          >
-            {saving ? "Saving…" : editTarget ? "Save Changes" : "Add Device"}
+          <button onClick={handleDelete} disabled={deleting}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-red-600 hover:bg-red-500 text-white transition-colors disabled:opacity-50">
+            {deleting && <Loader2 size={11} className="animate-spin" />}
+            Delete
           </button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 // ─── Devices Page ─────────────────────────────────────────────────────────────
 
 export default function DevicesPage() {
-  const [devices,       setDevices]       = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState(null);
-  const [search,        setSearch]        = useState("");
-  const [drawerOpen,    setDrawerOpen]    = useState(false);
-  const [editTarget,    setEditTarget]    = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [nvrs,     setNvrs]     = useState([]);
+  const [channels, setChannels] = useState({});
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
+  const [search,   setSearch]   = useState("");
 
-  const loadDevices = useCallback(() => {
+  // modal state
+  const [formOpen,  setFormOpen]  = useState(false);
+  const [editNvr,   setEditNvr]   = useState(null);  // null = add mode, NVR obj = edit mode
+  const [deleteNvr, setDeleteNvr] = useState(null);  // NVR to delete (or null)
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    devicesApi
-      .list()
-      .then((data) => setDevices(data.items || []))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    try {
+      const data = await discoveryApi.getNvrs();
+      const list = Array.isArray(data) ? data : [];
+      setNvrs(list);
+
+      const results = await Promise.allSettled(
+        list.map(nvr => discoveryApi.getChannels(nvr.id))
+      );
+      const counts = {};
+      list.forEach((nvr, i) => {
+        if (results[i].status === "fulfilled") {
+          counts[nvr.id] = results[i].value?.channel_count ?? results[i].value?.channels?.length ?? 0;
+        } else {
+          counts[nvr.id] = 0;
+        }
+      });
+      setChannels(counts);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { loadDevices(); }, [loadDevices]);
+  useEffect(() => { load(); }, [load]);
 
-  const filtered = devices.filter((d) =>
+  const filtered = nvrs.filter(n =>
     search === "" ||
-    [d.vendor, d.model, d.ip_address, d.device_type, d.serial_number, d.username]
+    [n.branch_name, n.nvr_ip, n.vendor, n.code, n.model, n.device_name]
       .filter(Boolean)
-      .some((v) => v.toLowerCase().includes(search.toLowerCase()))
+      .some(v => v.toLowerCase().includes(search.toLowerCase()))
   );
 
-  function openAdd() {
-    setEditTarget(null);
-    setDrawerOpen(true);
-  }
+  const synced    = nvrs.filter(n => n.sync_status === "synced").length;
+  const offline   = nvrs.length - synced;
+  const totalCams = Object.values(channels).reduce((a, b) => a + b, 0);
 
-  function openEdit(device) {
-    setEditTarget(device);
-    setDrawerOpen(true);
-  }
-
-  async function handleDelete(id) {
-    try {
-      await devicesApi.remove(id);
-    } catch (err) {
-      console.error("Delete failed:", err);
-    } finally {
-      setDeleteConfirm(null);
-      loadDevices();
-    }
-  }
-
-  const TABLE_HEADS = [
-    "Type", "Vendor", "Model", "IP Address", "Port",
-    "Site ID", "Serial", "Firmware", "MAC", "Username", "Status", "Actions",
-  ];
+  const HEADS = ["Name / Branch", "IP Address", "Vendor", "Status", "Channels", "Model", "Last Synced", "Error", "Actions"];
 
   return (
     <div className="flex-1 flex flex-col bg-background min-h-0 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-card flex-shrink-0">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <Server size={16} className="text-muted-foreground" />
           <span className="text-sm font-semibold text-foreground">Devices</span>
-          <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-            {devices.length}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded">{nvrs.length} NVRs</span>
+            <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded">{synced} online</span>
+            <span className="text-[10px] bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded">{offline} offline</span>
+            <span className="text-[10px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded">{totalCams} cameras</span>
+          </div>
         </div>
-
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 bg-muted border border-border rounded px-2.5 py-1.5 w-52">
+          <div className="flex items-center gap-2 bg-muted border border-border rounded px-2.5 py-1.5 w-56">
             <Search size={12} className="text-muted-foreground flex-shrink-0" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search devices…"
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search NVRs…"
               className="bg-transparent text-xs text-foreground placeholder-muted-foreground outline-none w-full"
             />
           </div>
           <button
-            onClick={loadDevices}
+            onClick={load}
             title="Refresh"
             className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           </button>
           <button
-            onClick={openAdd}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium rounded transition-colors"
+            onClick={() => { setEditNvr(null); setFormOpen(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
           >
-            <Plus size={14} />
+            <Plus size={12} />
             Add Device
           </button>
         </div>
@@ -422,25 +366,18 @@ export default function DevicesPage() {
       <div className="flex-1 overflow-auto">
         {loading && (
           <div className="flex items-center justify-center h-40 text-xs text-muted-foreground">
-            Loading…
+            Loading devices…
           </div>
         )}
-
         {!loading && error && (
-          <div className="flex items-center justify-center h-40 text-xs text-red-400">
-            {error}
-          </div>
+          <div className="flex items-center justify-center h-40 text-xs text-red-400">{error}</div>
         )}
-
         {!loading && !error && (
           <Table>
             <TableHeader>
               <TableRow className="border-border">
-                {TABLE_HEADS.map((h) => (
-                  <TableHead
-                    key={h}
-                    className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide py-2.5 px-3 bg-card"
-                  >
+                {HEADS.map(h => (
+                  <TableHead key={h} className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide py-2.5 px-3 bg-card whitespace-nowrap">
                     {h}
                   </TableHead>
                 ))}
@@ -449,104 +386,96 @@ export default function DevicesPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={TABLE_HEADS.length}
-                    className="text-center text-xs text-muted-foreground py-12"
-                  >
-                    {search
-                      ? "No devices match your search."
-                      : 'No devices yet. Click "Add Device" to create one.'}
+                  <TableCell colSpan={HEADS.length} className="text-center text-xs text-muted-foreground py-12">
+                    {search ? "No NVRs match your search." : "No devices found."}
                   </TableCell>
                 </TableRow>
-              ) : (
-                filtered.map((d) => (
-                  <TableRow key={d.id} className="border-border hover:bg-secondary/20">
-                    <TableCell className="px-3 py-2">
-                      <span className="text-xs font-medium text-foreground">{d.device_type}</span>
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-xs text-foreground">
-                      {d.vendor || <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-xs text-foreground">
-                      {d.model || <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-xs font-mono text-foreground">
-                      {d.ip_address || <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-xs text-foreground">
-                      {d.port ?? <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-xs font-mono text-muted-foreground max-w-[110px] truncate">
-                      {d.site_id ? (
-                        <span title={d.site_id}>{d.site_id.slice(0, 8)}…</span>
-                      ) : (
-                        <span>—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-xs text-muted-foreground">
-                      {d.serial_number || "—"}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-xs text-muted-foreground">
-                      {d.firmware_version || "—"}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-xs font-mono text-muted-foreground">
-                      {d.mac_address || "—"}
-                    </TableCell>
-                    <TableCell className="px-3 py-2 text-xs text-muted-foreground">
-                      {d.username || "—"}
-                    </TableCell>
-                    <TableCell className="px-3 py-2">
-                      <StatusBadge status={d.status} />
-                    </TableCell>
-                    <TableCell className="px-3 py-2">
-                      {deleteConfirm === d.id ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleDelete(d.id)}
-                            className="text-[11px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(null)}
-                            className="p-0.5 rounded text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => openEdit(d)}
-                            title="Edit"
-                            className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(d.id)}
-                            title="Delete"
-                            className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-red-400 transition-colors"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ) : filtered.map(nvr => (
+                <TableRow key={nvr.id} className="border-border hover:bg-secondary/20">
+                  {/* Name */}
+                  <TableCell className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Monitor size={13} className={`flex-shrink-0 ${nvr.sync_status === "synced" ? "text-emerald-400" : "text-muted-foreground"}`} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate max-w-[160px]">
+                          {nvr.branch_name || nvr.device_name || nvr.code}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-mono">{nvr.code}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  {/* IP */}
+                  <TableCell className="px-3 py-2 text-xs font-mono text-foreground">{nvr.nvr_ip || "—"}</TableCell>
+                  {/* Vendor */}
+                  <TableCell className="px-3 py-2"><VendorBadge vendor={nvr.vendor} /></TableCell>
+                  {/* Status */}
+                  <TableCell className="px-3 py-2"><SyncBadge status={nvr.sync_status} /></TableCell>
+                  {/* Channels */}
+                  <TableCell className="px-3 py-2">
+                    <span className={`text-xs font-medium ${channels[nvr.id] > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                      {channels[nvr.id] !== undefined ? channels[nvr.id] : "—"}
+                    </span>
+                  </TableCell>
+                  {/* Model */}
+                  <TableCell className="px-3 py-2 text-xs text-muted-foreground max-w-[140px] truncate">
+                    {nvr.model || nvr.device_name || "—"}
+                  </TableCell>
+                  {/* Last Synced */}
+                  <TableCell className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                    {fmt(nvr.last_synced_at)}
+                  </TableCell>
+                  {/* Error */}
+                  <TableCell className="px-3 py-2 max-w-[220px]">
+                    {nvr.sync_error ? (
+                      <span className="text-[11px] text-amber-400 truncate block" title={nvr.sync_error}>
+                        {nvr.sync_error.slice(0, 60)}{nvr.sync_error.length > 60 ? "…" : ""}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  {/* Actions */}
+                  <TableCell className="px-3 py-2">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setEditNvr(nvr); setFormOpen(true); }}
+                        title="Edit"
+                        className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteNvr(nvr)}
+                        title="Delete"
+                        className="p-1 rounded hover:bg-red-500/15 text-muted-foreground hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         )}
       </div>
 
-      <DeviceDrawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        editTarget={editTarget}
-        onSaved={loadDevices}
+      {/* Add / Edit modal */}
+      <NVRFormModal
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSaved={load}
+        editNvr={editNvr}
       />
+
+      {/* Delete confirm modal */}
+      {deleteNvr && (
+        <DeleteModal
+          nvr={deleteNvr}
+          onClose={() => setDeleteNvr(null)}
+          onDeleted={load}
+        />
+      )}
     </div>
   );
 }

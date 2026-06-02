@@ -88,6 +88,22 @@ async function httpPut(path, body) {
   return res.json()
 }
 
+async function httpPatch(path, body) {
+  const headers = getAuthHeaders()
+  headers['Content-Type'] = 'application/json'
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'PATCH',
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : null,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Request failed: ${res.status} ${res.statusText} - ${text}`)
+  }
+  return res.json()
+}
+
 async function httpDelete(path) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'DELETE',
@@ -191,9 +207,11 @@ export const api = {
 export const discoveryApi = {
   getNvrs: () => httpGet('/discovery/nvrs'),
   getChannels: (nvrId) => httpGet(`/discovery/nvrs/${nvrId}/channels`),
-  // Register channel with go2rtc and get back stream_name
   startChannelStream: (nvrId, channelId) =>
     httpPost(`/discovery/nvrs/${nvrId}/channels/${channelId}/stream`),
+  addNvr: (data) => httpPost('/discovery/sync/device', data),
+  updateNvr: (nvrId, data) => httpPatch(`/discovery/nvrs/${nvrId}`, data),
+  deleteNvr: (nvrId) => httpDelete(`/discovery/nvrs/${nvrId}`),
 }
 
 // ============================================
