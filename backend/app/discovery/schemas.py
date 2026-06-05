@@ -111,6 +111,8 @@ class CsvDeviceRow(BaseModel):
                 return "acti_snvr"
             if "hik" in v:
                 return "hikvision"
+            if "uniview" in v or "unv" in v or "znr" in v:
+                return "uniview"
             return v
         return "hikvision"
 
@@ -215,13 +217,13 @@ class ActiDeviceInfo(BaseModel):
 
 class ActiChannel(BaseModel):
     """
-    Represents a single camera channel on an ACTi SNVR.
-    Discovered by probing /virtualcamera/channelN?media&streamid=0.
+    Represents a single camera channel discovered via probe (ACTi or Uniview).
     """
 
     channel_id: str          # "1", "2", …
     channel_name: str        # "Channel 1", "Channel 2", …  (no name API)
     enabled: bool = True
+    protocol: str = "ACTI_SNVR"  # overridden per vendor
 
 
 # ---------------------------------------------------------------------------

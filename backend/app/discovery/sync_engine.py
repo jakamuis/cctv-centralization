@@ -58,6 +58,12 @@ from app.discovery.acti_client import (
     ActiConnectionError,
     ActiResponseError,
 )
+from app.discovery.uniview_client import (
+    UniviewNVRClient,
+    UniviewAuthError,
+    UniviewConnectionError,
+    UniviewResponseError,
+)
 from app.discovery.schemas import (
     CsvDeviceRow,
     DeviceSyncResult,
@@ -262,6 +268,54 @@ async def _sync_single_device(
             sync_error = f"{type(exc).__name__}: {exc}"
             logger.exception(
                 "Unexpected error syncing ACTi site=%s ip=%s", code, nvr_ip
+            )
+
+    elif row.vendor_str == "uniview":
+        try:
+            async with UniviewNVRClient(
+                ip=row.nvr_ip,          # type: ignore[arg-type]
+                port=http_port,
+                rtsp_port=row.rtsp_port_int,
+                username=row.username,  # type: ignore[arg-type]
+                password=row.password,  # type: ignore[arg-type]
+            ) as client:
+
+                logger.debug("Probing Uniview NVR for %s:%d", nvr_ip, http_port)
+                device_info = await client.get_device_info()
+                logger.info(
+                    "Uniview device OK: site=%s ip=%s model=%s serial=%s",
+                    code, nvr_ip,
+                    device_info.model,
+                    device_info.serial_number,
+                )
+
+                channels = await client.get_channels()
+                logger.info(
+                    "Uniview channels found: site=%s ip=%s count=%d",
+                    code, nvr_ip, len(channels),
+                )
+                sync_status = "synced"
+
+        except UniviewConnectionError as exc:
+            sync_status = "unreachable"
+            sync_error = str(exc)
+            logger.warning("Uniview unreachable: site=%s ip=%s — %s", code, nvr_ip, exc)
+
+        except UniviewAuthError as exc:
+            sync_status = "auth_error"
+            sync_error = str(exc)
+            logger.warning("Uniview auth failed: site=%s ip=%s — %s", code, nvr_ip, exc)
+
+        except UniviewResponseError as exc:
+            sync_status = "failed"
+            sync_error = str(exc)
+            logger.error("Uniview response error: site=%s ip=%s — %s", code, nvr_ip, exc)
+
+        except Exception as exc:  # noqa: BLE001
+            sync_status = "failed"
+            sync_error = f"{type(exc).__name__}: {exc}"
+            logger.exception(
+                "Unexpected error syncing Uniview site=%s ip=%s", code, nvr_ip
             )
 
     else:
