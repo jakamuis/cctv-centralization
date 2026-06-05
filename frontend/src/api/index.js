@@ -212,6 +212,7 @@ export const discoveryApi = {
   addNvr: (data) => httpPost('/discovery/sync/device', data),
   updateNvr: (nvrId, data) => httpPatch(`/discovery/nvrs/${nvrId}`, data),
   deleteNvr: (nvrId) => httpDelete(`/discovery/nvrs/${nvrId}`),
+  syncAll: () => httpPost('/discovery/sync', {}),
 }
 
 // ============================================

@@ -276,3 +276,71 @@ streams:
     - exec:python3 /scripts/acti_pipe.py 192.168.68.200 7 agigorontalo samator%232017#video=h264
   sig-gorontalo_8:
     - exec:python3 /scripts/acti_pipe.py 192.168.68.200 8 agigorontalo samator%232017#video=h264
+  sgi-cikande_11:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1101#video=h264
+  sgi-cikande_1:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/101#video=h264
+  sgi-cikande_12:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1201#video=h264
+  sgi-cikande_10:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1001#video=h264
+  sgi-cikande_14:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1401#video=h264
+  sgi-cikande_15:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1501#video=h264
+  sgi-cikande_13:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1301#video=h264
+  sgi-cikande_16:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1601#video=h264
+  sgi-cikande_17:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1701#video=h264
+  sgi-cikande_2:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/201#video=h264
+  sgi-cikande_19:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1901#video=h264
+  sgi-cikande_18:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/1801#video=h264
+  sgi-cikande_20:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/2001#video=h264
+  sgi-cikande_21:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/2101#video=h264
+  sgi-cikande_22:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/2201#video=h264
+  sgi-cikande_23:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/2301#video=h264
+  sgi-cikande_25:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/2501#video=h264
+  sgi-cikande_24:
+    - ffmpeg:rtsp://sigcikande:samator%232017@192.168.71.4:554/Streaming/Channels/2401#video=h264
+  sig-lampung-ultimate_12:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/1201#video=h264
+  sig-lampung-ultimate_1:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/101#video=h264
+  sig-lampung-ultimate_11:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/1101#video=h264
+  sig-lampung-ultimate_10:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/1001#video=h264
+  sig-lampung-ultimate_13:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/1301#video=h264
+  sig-lampung-ultimate_15:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/1501#video=h264
+  sig-lampung-ultimate_2:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/201#video=h264
+  sig-lampung-ultimate_16:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/1601#video=h264
+  sig-lampung-ultimate_14:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/1401#video=h264
+  sig-lampung-ultimate_4:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/401#video=h264
+  sig-lampung-ultimate_6:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/601#video=h264
+  sig-lampung-ultimate_5:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/501#video=h264
+  sig-lampung-ultimate_3:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/301#video=h264
+  sig-lampung-ultimate_7:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/701#video=h264
+  sig-lampung-ultimate_8:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/801#video=h264
+  sig-lampung-ultimate_9:
+    - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/901#video=h264

@@ -175,6 +175,7 @@ export default function Dashboard({ user, onLogout }) {
   const [nvrGroups, setNvrGroups] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [syncing, setSyncing] = useState(false)
 
   // Sidebar: null = all NVRs, or nvr.id
   const [selectedNvrId, setSelectedNvrId] = useState(null)
@@ -190,6 +191,16 @@ export default function Dashboard({ user, onLogout }) {
     online: nvrGroups.filter(g => g.nvr.sync_status === 'synced').length,
     totalChannels: nvrGroups.reduce((s, g) => s + g.channels.length, 0),
   }), [nvrGroups])
+
+  async function handleSyncAll() {
+    setSyncing(true)
+    try {
+      await discoveryApi.syncAll()
+      await loadAll()
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   async function loadAll() {
     setLoading(true)
@@ -309,6 +320,18 @@ export default function Dashboard({ user, onLogout }) {
           <div className="filters">
             <SearchBar value={query} onChange={setQuery} placeholder="Search channels, sites…" />
           </div>
+          <button
+            onClick={handleSyncAll}
+            disabled={syncing || loading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '6px 12px', fontSize: '0.75rem', borderRadius: '6px',
+              backgroundColor: syncing ? '#059669' : '#10b981',
+              color: '#fff', border: 'none', cursor: 'pointer', opacity: (syncing || loading) ? 0.6 : 1,
+            }}
+          >
+            {syncing ? '⟳ Syncing…' : '⟳ Sync All'}
+          </button>
           <RefreshButton onClick={loadAll} disabled={loading} />
         </div>
 

@@ -56,7 +56,7 @@ class DeviceRepository:
             Device.id == device_id
         )
 
-        if not include_deleted:
+        if not include_deleted and hasattr(Device, "is_deleted"):
             query = query.where(
                 Device.is_deleted == False
             )
@@ -67,12 +67,10 @@ class DeviceRepository:
 
     async def get_by_id(self, device_id: UUID):
 
-        result = await self.db.execute(
-            select(Device).where(
-                Device.id == device_id,
-                Device.is_deleted == False
-            )
-        )
+        query = select(Device).where(Device.id == device_id)
+        if hasattr(Device, "is_deleted"):
+            query = query.where(Device.is_deleted == False)
+        result = await self.db.execute(query)
 
         return result.scalar_one_or_none()
 

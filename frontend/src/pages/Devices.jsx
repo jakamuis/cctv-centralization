@@ -278,6 +278,36 @@ export default function DevicesPage() {
   const [formOpen,  setFormOpen]  = useState(false);
   const [editNvr,   setEditNvr]   = useState(null);  // null = add mode, NVR obj = edit mode
   const [deleteNvr, setDeleteNvr] = useState(null);  // NVR to delete (or null)
+  const [syncing,   setSyncing]   = useState(false);
+  const [syncingRow, setSyncingRow] = useState(null); // nvr.id being synced
+
+  async function handleSyncOne(nvr) {
+    setSyncingRow(nvr.id);
+    try {
+      await discoveryApi.addNvr({
+        nvr_ip:      nvr.nvr_ip,
+        http_port:   nvr.http_port,
+        rtsp_port:   nvr.rtsp_port,
+        username:    nvr.username,
+        vendor:      nvr.vendor,
+        code:        nvr.code,
+        branch_name: nvr.branch_name,
+      });
+      await load();
+    } finally {
+      setSyncingRow(null);
+    }
+  }
+
+  async function handleSyncAll() {
+    setSyncing(true);
+    try {
+      await discoveryApi.syncAll();
+      await load();
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -351,6 +381,15 @@ export default function DevicesPage() {
             className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </button>
+          <button
+            onClick={handleSyncAll}
+            disabled={syncing || loading}
+            title="Sync all NVRs"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50"
+          >
+            {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            {syncing ? "Syncing…" : "Sync All"}
           </button>
           <button
             onClick={() => { setEditNvr(null); setFormOpen(true); }}
@@ -437,6 +476,16 @@ export default function DevicesPage() {
                   {/* Actions */}
                   <TableCell className="px-3 py-2">
                     <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleSyncOne(nvr)}
+                        disabled={syncingRow === nvr.id}
+                        title="Sync this device"
+                        className="p-1 rounded hover:bg-emerald-500/15 text-muted-foreground hover:text-emerald-400 transition-colors disabled:opacity-50"
+                      >
+                        {syncingRow === nvr.id
+                          ? <Loader2 size={12} className="animate-spin" />
+                          : <RefreshCw size={12} />}
+                      </button>
                       <button
                         onClick={() => { setEditNvr(nvr); setFormOpen(true); }}
                         title="Edit"
