@@ -99,13 +99,14 @@ class HikvisionISAPIClient:
         self._password = password
         scheme = "https" if use_https else "http"
         self._base_url = f"{scheme}://{ip}:{port}"
+        self._auth: Optional[httpx.DigestAuth] = None
         self._client: Optional[httpx.AsyncClient] = None
 
     # ---- context manager ----
 
     async def __aenter__(self) -> "HikvisionISAPIClient":
+        self._auth = httpx.DigestAuth(self._username, self._password)
         self._client = httpx.AsyncClient(
-            auth=httpx.DigestAuth(self._username, self._password),
             timeout=httpx.Timeout(
                 connect=CONNECT_TIMEOUT,
                 read=READ_TIMEOUT,
@@ -115,6 +116,13 @@ class HikvisionISAPIClient:
             verify=False,           # NVRs often use self-signed certs
             follow_redirects=True,
         )
+        # Some NVRs drop the first Digest auth attempt on a fresh TCP connection.
+        # A cheap GET to root pre-warms the keep-alive connection so subsequent
+        # authenticated requests succeed without a ReadTimeout.
+        try:
+            await self._client.get(self._base_url + "/", timeout=httpx.Timeout(connect=CONNECT_TIMEOUT, read=3.0, write=3.0, pool=3.0))
+        except httpx.RequestError:
+            pass
         return self
 
     async def __aexit__(self, *_) -> None:
@@ -204,7 +212,7 @@ class HikvisionISAPIClient:
             )
 
         try:
-            kwargs = {}
+            kwargs: dict = {"auth": self._auth}
             if timeout_override is not None:
                 kwargs["timeout"] = httpx.Timeout(
                     connect=CONNECT_TIMEOUT,

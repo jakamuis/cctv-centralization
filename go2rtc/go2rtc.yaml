@@ -344,3 +344,71 @@ streams:
     - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/801#video=h264
   sig-lampung-ultimate_9:
     - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/901#video=h264
+  sgi-batam_1:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/1#video=h264
+  sgi-batam_12:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/12#video=h264
+  sgi-batam_11:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/11#video=h264
+  sgi-batam_10:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/10#video=h264
+  sgi-batam_13:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/13#video=h264
+  sgi-batam_14:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/14#video=h264
+  sgi-batam_2:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/2#video=h264
+  sgi-batam_4:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/4#video=h264
+  sgi-batam_3:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/3#video=h264
+  sgi-bandung_2:
+    - ffmpeg:rtsp://admin:Samator1%23@10.70.170.200:554/Streaming/Channels/201#video=h264
+  sgi-bandung_4:
+    - ffmpeg:rtsp://admin:Samator1%23@10.70.170.200:554/Streaming/Channels/401#video=h264
+  sgi-bandung_1:
+    - ffmpeg:rtsp://admin:Samator1%23@10.70.170.200:554/Streaming/Channels/101#video=h264
+  sgi-bandung_3:
+    - ffmpeg:rtsp://admin:Samator1%23@10.70.170.200:554/Streaming/Channels/301#video=h264
+  sgi-bandung_6:
+    - ffmpeg:rtsp://admin:Samator1%23@10.70.170.200:554/Streaming/Channels/601#video=h264
+  sgi-bandung_5:
+    - ffmpeg:rtsp://admin:Samator1%23@10.70.170.200:554/Streaming/Channels/501#video=h264
+  sgi-bandung_8:
+    - ffmpeg:rtsp://admin:Samator1%23@10.70.170.200:554/Streaming/Channels/801#video=h264
+  sgi-bandung_7:
+    - ffmpeg:rtsp://admin:Samator1%23@10.70.170.200:554/Streaming/Channels/701#video=h264
+  sgi-daanmogot_1:
+    - ffmpeg:rtsp://admin:samator88@192.168.73.200:554/Streaming/Channels/101#video=h264
+  sgi-daanmogot_2:
+    - ffmpeg:rtsp://admin:samator88@192.168.73.200:554/Streaming/Channels/201#video=h264
+  sgi-daanmogot_3:
+    - ffmpeg:rtsp://admin:samator88@192.168.73.200:554/Streaming/Channels/301#video=h264
+  sgi-daanmogot_4:
+    - ffmpeg:rtsp://admin:samator88@192.168.73.200:554/Streaming/Channels/401#video=h264
+  sgi-daanmogot_6:
+    - ffmpeg:rtsp://admin:samator88@192.168.73.200:554/Streaming/Channels/601#video=h264
+  sgi-daanmogot_9:
+    - ffmpeg:rtsp://admin:samator88@192.168.73.200:554/Streaming/Channels/901#video=h264
+  sgi-daanmogot_7:
+    - ffmpeg:rtsp://admin:samator88@192.168.73.200:554/Streaming/Channels/701#video=h264
+  sgi-daanmogot_5:
+    - ffmpeg:rtsp://admin:samator88@192.168.73.200:554/Streaming/Channels/501#video=h264
+  sgi-daanmogot_8:
+    - ffmpeg:rtsp://admin:samator88@192.168.73.200:554/Streaming/Channels/801#video=h264
+  sgi-bangka_4:
+    - ffmpeg:rtsp://sgimuntok:samator%232017@192.168.95.200:554/unicast/c4/s0/live#video=h264
+  sgi-bangka_3:
+    - ffmpeg:rtsp://sgimuntok:samator%232017@192.168.95.200:554/unicast/c3/s0/live#video=h264
+  sgi-bangka_1:
+    - ffmpeg:rtsp://sgimuntok:samator%232017@192.168.95.200:554/unicast/c1/s0/live#video=h264
+  sgi-bangka_2:
+    - ffmpeg:rtsp://sgimuntok:samator%232017@192.168.95.200:554/unicast/c2/s0/live#video=h264
+  sgi-bangka_5:
+    - ffmpeg:rtsp://sgimuntok:samator%232017@192.168.95.200:554/unicast/c5/s0/live#video=h264
+  sgi-bangka_6:
+    - ffmpeg:rtsp://sgimuntok:samator%232017@192.168.95.200:554/unicast/c6/s0/live#video=h264
+  sgi-bangka_7:
+    - ffmpeg:rtsp://sgimuntok:samator%232017@192.168.95.200:554/unicast/c7/s0/live#video=h264
+  sgi-bangka_8:
+    - ffmpeg:rtsp://sgimuntok:samator%232017@192.168.95.200:554/unicast/c8/s0/live#video=h264

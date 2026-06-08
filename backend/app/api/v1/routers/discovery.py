@@ -484,20 +484,24 @@ async def start_channel_stream(
             f" {encoded_user} {encoded_pass}{port_suffix}"
             f"#video=h264"
         )
+    elif vendor == "uniview":
+        # Uniview ZNR/NVR series: RTSP path is /unicast/c{N}/s0/live
+        rtsp_url = (
+            f"ffmpeg:rtsp://{encoded_user}:{encoded_pass}"
+            f"@{nvr.nvr_ip}:{nvr.rtsp_port}"
+            f"/unicast/c{channel_id}/s0/live#video=h264"
+        )
     else:
         # Hikvision: wrap with ffmpeg so go2rtc always delivers H.264 to the
         # browser, regardless of whether the camera is H.264 or H.265 (HEVC).
         # go2rtc/ffmpeg passes through H.264 without re-encoding; H.265 is
         # transcoded on the fly.
         #
-        # RTSP path format:
-        #   Firmware V3.x (very old): /Streaming/Channels/N  (no stream suffix)
-        #   All newer firmware:       /Streaming/Channels/N01
-        firmware = getattr(nvr, "firmware_version", "") or ""
-        if firmware.startswith("V3."):
-            channel_path = f"/Streaming/Channels/{channel_id}"
-        else:
-            channel_path = f"/Streaming/Channels/{channel_id}01"
+        # Hikvision RTSP path is always /Streaming/Channels/{channel_id}01
+        # regardless of firmware version. The DS-7616NI-E2 (V3.4.2) and all
+        # tested Hikvision NVRs use this format; the old bare /Channels/N path
+        # returns 400 Bad Request even on V3.x firmware.
+        channel_path = f"/Streaming/Channels/{channel_id}01"
 
         rtsp_url = (
             f"ffmpeg:rtsp://{encoded_user}:{encoded_pass}"
