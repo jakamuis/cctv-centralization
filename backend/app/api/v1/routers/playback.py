@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import AsyncIterator
 from datetime import timezone
 from uuid import UUID
 
@@ -56,7 +57,7 @@ from app.schemas.playback import (
 from app.services.playback.download_service import (
     DownloadError,
     build_download_filename,
-    stream_recording_download,
+    stream_recording,
 )
 from app.services.playback.hikvision_playback import (
     PlaybackSearchError,
@@ -534,12 +535,12 @@ async def download_recording_endpoint(
     current_user: User = Depends(require_permission("playback.download")),
 ):
     """
-    Stream a recording clip directly from the NVR to the client.
+    Stream a recording clip directly from the NVR via ffmpeg.
 
-    The backend proxies the Hikvision ISAPI download endpoint.
+    The backend probes for the correct RTSP playback URL (handles PSIA fallback
+    for older firmware), then streams fragmented MP4 bytes as ffmpeg produces
+    them. The browser download starts immediately and shows real progress.
     Credentials are never exposed to the frontend.
-
-    Returns a streaming MP4 response.
     """
     nvr = await _get_nvr_or_404(db, body.device_id)
 
@@ -550,7 +551,6 @@ async def download_recording_endpoint(
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
 
-    # Audit log before starting download
     await _audit(
         db=db,
         action="playback_download_requested",
@@ -567,24 +567,31 @@ async def download_recording_endpoint(
     )
 
     try:
-        stream = stream_recording_download(
+        gen = stream_recording(
             nvr=nvr,
             channel=body.channel,
             start_time=start,
             end_time=end,
         )
+        # Consume the first item to trigger URL probe / DownloadError before headers are sent
+        first_chunk = None
+        async for chunk in gen:
+            first_chunk = chunk
+            break
     except DownloadError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Download failed: {exc}",
         )
 
+    async def _combined() -> AsyncIterator[bytes]:
+        if first_chunk:
+            yield first_chunk
+        async for chunk in gen:
+            yield chunk
+
     return StreamingResponse(
-        stream,
+        _combined(),
         media_type="video/mp4",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "X-Playback-Device": str(body.device_id),
-            "X-Playback-Channel": str(body.channel),
-        },
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

@@ -36,6 +36,16 @@ CONNECT_TIMEOUT = 10.0
 READ_TIMEOUT = 8.0
 MAX_CHANNELS = 32
 
+# ACTi SNVRs sometimes drop connections for non-browser User-Agents
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "*/*",
+}
+
 
 # ---------------------------------------------------------------------------
 # Custom exceptions (parallel to isapi_client.py)
@@ -85,6 +95,7 @@ class ActiSNVRClient:
     async def __aenter__(self) -> "ActiSNVRClient":
         self._client = httpx.AsyncClient(
             auth=httpx.BasicAuth(self._username, self._password),
+            headers=_BROWSER_HEADERS,
             timeout=httpx.Timeout(
                 connect=CONNECT_TIMEOUT,
                 read=READ_TIMEOUT,
@@ -105,17 +116,32 @@ class ActiSNVRClient:
 
     async def get_device_info(self) -> ActiDeviceInfo:
         """
-        Probe connectivity via channel 1 and return synthesised device info.
+        Probe connectivity and return synthesised device info.
 
-        The ACTi SNVR has no machine-readable device-info endpoint, so we
-        derive the device name from the IP address and return fixed metadata.
-
-        Raises ActiConnectionError / ActiAuthError on failure.
+        ACTi SNVRs have no machine-readable info endpoint. We probe the root
+        URL first (lighter, always responds in browser), then fall back to the
+        channel 1 stream URL. Raises ActiConnectionError / ActiAuthError on
+        failure.
         """
-        url = f"{self._base_url}/virtualcamera/channel1?media&streamid=0"
         logger.debug("ACTi probe connectivity → %s:%d", self._ip, self._port)
 
-        await self._head_or_get(url)
+        # Prefer the root page — it responds to any HTTP client and confirms
+        # the server is up without needing to negotiate a video stream.
+        root_url = f"{self._base_url}/"
+        channel_url = f"{self._base_url}/virtualcamera/channel1?media&streamid=0"
+
+        try:
+            await self._head_or_get(root_url)
+        except ActiResponseError:
+            # Some root pages return non-2xx but the server IS alive; that's fine.
+            pass
+        except ActiConnectionError:
+            # Root failed — try the channel endpoint before giving up.
+            logger.debug(
+                "ACTi root probe failed, trying channel1 endpoint for %s:%d",
+                self._ip, self._port,
+            )
+            await self._head_or_get(channel_url)
 
         return ActiDeviceInfo(
             device_name=f"ACTi SNVR @ {self._ip}",

@@ -634,6 +634,8 @@ function PlaybackMainArea({
   timelineBlocks, timelineWindow,
   searchLoading,
   onCloseSession,
+  onSeek,
+  currentPlaybackTime,
 }) {
   const camName   = selectedCamera?.name || '—'
   const dateLabel = selectedDate ? formatDateShort(selectedDate) : '—'
@@ -789,6 +791,8 @@ function PlaybackMainArea({
           windowStart={timelineWindow.start}
           windowEnd={timelineWindow.end}
           loading={searchLoading}
+          currentTime={currentPlaybackTime}
+          onSeek={onSeek}
         />
       </div>
     </section>
@@ -828,8 +832,35 @@ export default function PlaybackView() {
   const sessionRef = useRef(null)
   useEffect(() => { sessionRef.current = session }, [session])
 
+  // Current playback time cursor (wall-clock, updates every second while session active)
+  const [currentPlaybackTime, setCurrentPlaybackTime] = useState(null)
+  const sessionStartTimeRef   = useRef(null) // Date of start_time on the session
+  const sessionCreatedAtRef   = useRef(null) // performance.now() when session was set
+
   // Download dialog
   const [downloadOpen, setDownloadOpen] = useState(false)
+
+  // Sync session start-time refs so the cursor interval can read them without stale closure
+  useEffect(() => {
+    if (session) {
+      sessionStartTimeRef.current  = new Date(session.start_time)
+      sessionCreatedAtRef.current  = performance.now()
+    } else {
+      sessionStartTimeRef.current  = null
+      sessionCreatedAtRef.current  = null
+      setCurrentPlaybackTime(null)
+    }
+  }, [session])
+
+  // Tick every second to advance the timeline cursor
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!sessionStartTimeRef.current || sessionCreatedAtRef.current === null) return
+      const elapsed = performance.now() - sessionCreatedAtRef.current
+      setCurrentPlaybackTime(new Date(sessionStartTimeRef.current.getTime() + elapsed))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
 
   // Cleanup active session when user navigates away
   useEffect(() => {
@@ -948,6 +979,33 @@ export default function PlaybackView() {
     }
   }, [session])
 
+  // Seek to a specific wall-clock time by creating a new playback session from that point.
+  const handleSeek = useCallback(async (seekDate) => {
+    if (!selectedNvr || !selectedCamera || !selectedDate) return
+    const end = buildDateTime(selectedDate, endTime)
+    if (!end || seekDate >= end) return
+
+    // Close current session before starting a new one
+    const current = session
+    setSession(null)
+    setSessionError('')
+    if (current?.session_id) {
+      playbackApi.deleteSession(current.session_id).catch(() => {})
+    }
+
+    setSessionLoading(true)
+    try {
+      const data = await playbackApi.createSession(
+        selectedNvr.id, selectedCamera.channel_id, seekDate, end
+      )
+      setSession(data)
+    } catch (e) {
+      setSessionError(e.message || 'Failed to seek — check backend and go2rtc logs')
+    } finally {
+      setSessionLoading(false)
+    }
+  }, [selectedNvr, selectedCamera, selectedDate, endTime, session])
+
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden">
       <PlaybackLeftPane
@@ -989,6 +1047,8 @@ export default function PlaybackView() {
         timelineWindow={timelineWindow}
         searchLoading={searchLoading}
         onCloseSession={handleCloseSession}
+        onSeek={handleSeek}
+        currentPlaybackTime={currentPlaybackTime}
       />
 
       <PlaybackDownloadDialog

@@ -34,7 +34,7 @@ export default function CameraDetailPanel() {
   const {
     name, site, nvr, channel, ip,
     codec, bitrate, fps, resolution,
-    lastSeen, streamType, online,
+    lastOnline, streamType, online,
   } = selectedCamera;
 
   return (
@@ -125,7 +125,7 @@ export default function CameraDetailPanel() {
                 value={online ? "Online" : "Offline"}
                 highlight={online ? "text-emerald-400" : "text-red-400"}
               />
-              <InfoRow label="Last Seen" value={lastSeen} />
+              <InfoRow label="Last Online" value={lastOnline} />
             </div>
           </div>
         )}

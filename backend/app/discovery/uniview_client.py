@@ -31,6 +31,15 @@ READ_TIMEOUT = 15.0
 MAX_CHANNELS = 32
 RTSP_TIMEOUT = 5.0
 
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, */*",
+}
+
 
 class UniviewConnectionError(Exception):
     """Device unreachable (TCP / timeout)."""
@@ -92,6 +101,7 @@ class UniviewNVRClient:
     async def __aenter__(self) -> "UniviewNVRClient":
         self._client = httpx.AsyncClient(
             auth=httpx.DigestAuth(self._username, self._password),
+            headers=_BROWSER_HEADERS,
             timeout=httpx.Timeout(
                 connect=CONNECT_TIMEOUT,
                 read=READ_TIMEOUT,

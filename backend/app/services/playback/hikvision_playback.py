@@ -1016,6 +1016,11 @@ async def _probe_rtsp_segment(
             if "200 OK" in resp:
                 return True
 
+            # 453 = NVR stream slot limit reached — recording likely exists
+            if "453" in resp:
+                logger.debug("[RTSP probe] %s: 453 Not Enough Bandwidth — assuming recording exists", uri)
+                return True
+
             if "401" in resp:
                 realm_m = re.search(r'realm="([^"]+)"', resp)
                 nonce_m = re.search(r'nonce="([^"]+)"', resp)
@@ -1041,7 +1046,13 @@ async def _probe_rtsp_segment(
                     writer.write(req2.encode())
                     await writer.drain()
                     resp2 = await _recv_headers(reader)
-                    return "200 OK" in resp2
+                    if "200 OK" in resp2:
+                        return True
+                    # 453 after auth = slot limit, recording likely exists
+                    if "453" in resp2:
+                        logger.debug("[RTSP probe] %s: 453 after auth — assuming recording exists", uri)
+                        return True
+                    return False
         finally:
             writer.close()
             try:

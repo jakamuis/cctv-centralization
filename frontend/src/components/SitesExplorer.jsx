@@ -52,6 +52,7 @@ function buildBranchesFromNvrs(nvrGroups) {
         online: ch.is_enabled !== false,
         channel: ch,
         nvr,
+        lastOnline: ch.last_online_at || null,
       });
     });
   });
@@ -233,6 +234,7 @@ export default function SitesExplorer() {
       ip: cam.channel?.ip_address,
       site: { name: cam.nvr?.code },
       nvr: { name: cam.nvr?.branch_name || cam.nvr?.nvr_ip },
+      lastOnline: cam.lastOnline,
     });
   };
 

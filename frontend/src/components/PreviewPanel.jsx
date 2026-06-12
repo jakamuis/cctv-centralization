@@ -65,7 +65,7 @@ export default function PreviewPanel() {
     );
   }
 
-  const { name, site, nvr, channel, ip, codec, bitrate, fps, resolution, lastSeen, online } =
+  const { name, site, nvr, channel, ip, codec, bitrate, fps, resolution, lastOnline, online } =
     selectedCamera;
 
   return (
@@ -173,7 +173,7 @@ export default function PreviewPanel() {
               <MetaRow label="Resolution" value={resolution} />
               <MetaRow label="FPS" value={fps} />
               <MetaRow label="Bitrate" value={bitrate} />
-              <MetaRow label="Last Seen" value={lastSeen} />
+              <MetaRow label="Last Online" value={lastOnline} />
               <MetaRow
                 label="Status"
                 value={online ? "Online" : "Offline"}

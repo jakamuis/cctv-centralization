@@ -358,6 +358,11 @@ async def list_nvr_channels(
                 "manage_port": ch.manage_port,
                 "protocol": ch.protocol,
                 "is_enabled": ch.is_enabled,
+                "last_online_at": (
+                    nvr.last_synced_at.isoformat()
+                    if ch.is_enabled and nvr.last_synced_at and nvr.sync_status == "synced"
+                    else None
+                ),
             }
             for ch in channels
         ],

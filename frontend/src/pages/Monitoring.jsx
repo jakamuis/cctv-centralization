@@ -1131,6 +1131,7 @@ function normaliseChannel(ch, nvrOnline = true) {
     channel_number: ch.channel_id,
     status:         (nvrOnline && ch.is_enabled) ? "online" : "offline",
     channel_id:     ch.channel_id,
+    lastOnline:     ch.last_online_at || null,
   };
 }
 
