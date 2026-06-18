@@ -275,6 +275,71 @@ async def sync_from_upload(
 
 
 # ---------------------------------------------------------------------------
+# POST /discovery/import  — fast CSV import, no device probing
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/import",
+    summary="Import NVR list from CSV without probing devices (fast)",
+    status_code=status.HTTP_200_OK,
+)
+async def import_from_csv(
+    file: UploadFile = File(..., description="CSV file with columns: branch_name, nvr_ip, username, password, vendor, timezone"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Upload a CSV and upsert rows directly into discovered_nvrs — no network
+    probing. Rows are inserted with sync_status='pending' so you can run a
+    real sync afterwards if needed.
+    """
+    raw_bytes = await file.read()
+    try:
+        raw_text = raw_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raw_text = raw_bytes.decode("latin-1")
+
+    rows, parse_errors = parse_csv_rows(raw_text)
+
+    if not rows and parse_errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"parse_errors": parse_errors},
+        )
+
+    repo = DiscoveryRepository(db)
+    imported = skipped = 0
+
+    for row in rows:
+        if not row.is_enabled:
+            skipped += 1
+            continue
+
+        await repo.upsert_nvr(
+            code=row.code,
+            branch_name=row.branch_name,
+            nvr_ip=row.nvr_ip,
+            http_port=row.http_port_int,
+            rtsp_port=row.rtsp_port_int,
+            username=row.username,
+            password=row.password,
+            device_info=None,
+            sync_status="pending",
+            sync_error=None,
+            vendor=row.vendor_str,
+            nvr_timezone=row.timezone or "WIB",
+        )
+        imported += 1
+
+    await db.commit()
+
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "parse_errors": parse_errors,
+    }
+
+
+# ---------------------------------------------------------------------------
 # GET /discovery/nvrs
 # ---------------------------------------------------------------------------
 
