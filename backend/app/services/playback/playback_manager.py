@@ -3,25 +3,22 @@ services/playback/playback_manager.py
 
 Orchestrates the full playback session lifecycle.
 
+All vendors use server-side prefetch: the recording is downloaded to a temp
+MP4 file first, then served via /session/{id}/stream so the browser gets a
+seekable file.  go2rtc is no longer used for playback sessions.
+
 Responsibilities:
-  1. Validate device exists and is reachable
-  2. Generate authenticated RTSP playback URL (credentials never leave backend)
-  3. Register temporary stream in go2rtc via REST API
-  4. Create PlaybackSession record in DB + Redis
-  5. Return tokenized stream URL for frontend consumption
-  6. Destroy session: remove go2rtc stream + DB record
-
-go2rtc stream registration:
-  POST /api/streams
-  Body: {"name": "<stream_name>", "channels": {"0": {"url": "<rtsp_url>"}}}
-
-go2rtc stream deletion:
-  DELETE /api/streams?name=<stream_name>
+  1. Download recording to server-side temp file (all vendors)
+  2. Create PlaybackSession record in DB + Redis (temp_file_path stored)
+  3. Return session ID — frontend fetches /session/{id}/stream to play
+  4. Destroy session: delete temp file + DB + Redis records
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -33,11 +30,12 @@ from app.core.config import settings
 from app.models.discovered_nvr import DiscoveredNVR
 from app.models.playback_session import PlaybackSession
 from app.services.playback.acti_playback import download_acti_recording
-from app.services.playback.hikvision_playback import build_playback_rtsp_url
 from app.services.playback.playback_session import (
     create_session,
     delete_session,
     get_session_temp_file_path,
+    mark_session_file_complete,
+    set_session_temp_file,
     DEFAULT_SESSION_TTL_SECONDS,
 )
 
@@ -83,35 +81,6 @@ def _build_stream_name(device_id: uuid.UUID, channel: int, start_time: datetime)
     ts = start_time.strftime("%Y%m%dT%H%M%SZ") if start_time.tzinfo else start_time.strftime("%Y%m%dT%H%M%SZ")
     nonce = uuid.uuid4().hex[:8]
     return f"playback_{device_short}_ch{channel}_{ts}_{nonce}"
-
-
-async def _register_go2rtc_stream(stream_name: str, rtsp_url: str) -> None:
-    """
-    Register a temporary playback stream in go2rtc.
-
-    go2rtc API:
-      PUT /api/streams?name=<stream_name>&src=<rtsp_url>
-
-    Raises Go2RTCError on failure.
-    """
-    api_url = f"{settings.streaming.internal_go2rtc_url}/api/streams"
-    logger.info("Registering go2rtc playback stream: %r", stream_name)
-
-    try:
-        async with httpx.AsyncClient(timeout=GO2RTC_TIMEOUT) as client:
-            response = await client.put(
-                api_url,
-                params={"name": stream_name, "src": rtsp_url},
-            )
-    except httpx.RequestError as exc:
-        raise Go2RTCError(f"Cannot reach go2rtc at {api_url}: {exc}") from exc
-
-    if response.status_code not in (200, 201, 204):
-        raise Go2RTCError(
-            f"go2rtc stream registration failed: HTTP {response.status_code} — {response.text[:200]}"
-        )
-
-    logger.info("go2rtc stream registered: %r", stream_name)
 
 
 def _delete_temp_file(path: str) -> None:
@@ -169,17 +138,13 @@ async def create_playback_session(
     """
     Full playback session creation flow:
 
-    1. Build authenticated RTSP URL (credentials stay in backend)
-    2. Generate unique stream name
-    3. Register stream in go2rtc
-    4. Persist PlaybackSession to DB + Redis
-    5. Return PlaybackSession (stream_name is the go2rtc key)
-
-    The frontend receives only the stream_name and constructs the
-    WebSocket URL itself (same as live view).
+    1. Download recording to server-side temp MP4 file
+    2. Generate unique stream name (used as session identifier)
+    3. Persist PlaybackSession to DB + Redis (temp_file_path stored)
+    4. Return PlaybackSession — frontend fetches /session/{id}/stream
 
     Raises:
-      Go2RTCError       — if go2rtc registration fails
+      PrefetchError        — if the recording download fails
       PlaybackManagerError — for other orchestration errors
     """
     # Ensure start/end are UTC-aware
@@ -191,11 +156,14 @@ async def create_playback_session(
     stream_name = _build_stream_name(nvr.id, channel, start_time)
     vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
 
+    clip_secs = max(0, int((end_time - start_time).total_seconds()))
+    # Give the session enough TTL to cover the full background pre-fetch + buffer.
+    effective_ttl = max(ttl_seconds, clip_secs + 300)
+
     temp_file_path: str | None = None
 
     if vendor == "acti_snvr":
-        # Download the recording to the server first, then serve via HTTP —
-        # avoids real-time streaming from the device which is unreliable over VPN.
+        # ACTi has no RTSP playback — must download to server first.
         try:
             temp_file_path = await download_acti_recording(
                 nvr_ip=nvr.nvr_ip,
@@ -209,21 +177,6 @@ async def create_playback_session(
         except RuntimeError as exc:
             raise PrefetchError(str(exc)) from exc
 
-        # go2rtc is not used for prefetched sessions; stream_name is a placeholder
-        # that maps to the downloaded file served via the /session/{id}/stream endpoint.
-        rtsp_url = None
-    else:
-        rtsp_url = build_playback_rtsp_url(
-            nvr_ip=nvr.nvr_ip,
-            rtsp_port=nvr.rtsp_port,
-            username=nvr.username,
-            password=nvr.password,
-            channel=channel,
-            start_time=start_time,
-            end_time=end_time,
-        )
-        await _register_go2rtc_stream(stream_name, rtsp_url)
-
     # Persist session
     try:
         session = await create_session(
@@ -234,16 +187,41 @@ async def create_playback_session(
             end_time=end_time,
             stream_name=stream_name,
             created_by=created_by,
-            ttl_seconds=ttl_seconds,
+            ttl_seconds=effective_ttl,
             temp_file_path=temp_file_path,
         )
     except Exception as exc:
         logger.error("DB session creation failed: %s", exc)
-        if rtsp_url:
-            await _delete_go2rtc_stream(stream_name)
         if temp_file_path:
             _delete_temp_file(temp_file_path)
         raise PlaybackManagerError(f"Failed to create playback session: {exc}") from exc
+
+    # For non-ACTi vendors: kick off a background download so the full file is on
+    # disk before the frontend shows the video player. This gives the browser a
+    # seekable FileResponse instead of an un-seekable chunked StreamingResponse.
+    if vendor != "acti_snvr":
+        from app.services.playback.download_service import TEMP_DIR, stream_recording
+
+        out_path = os.path.join(TEMP_DIR, f"pb_{session.id.hex}.mp4")
+        await set_session_temp_file(str(session.id), out_path)
+
+        _sid = str(session.id)
+
+        async def _on_done():
+            await mark_session_file_complete(_sid)
+
+        async def _bg_prefetch():
+            try:
+                async for _ in stream_recording(
+                    nvr, channel, start_time, end_time,
+                    out_path=out_path, on_file_complete=_on_done,
+                ):
+                    pass
+            except Exception as exc:
+                logger.warning("Background prefetch failed session=%s: %s", _sid, exc)
+
+        asyncio.create_task(_bg_prefetch())
+        logger.info("Background prefetch started: session=%s out=%s", _sid, out_path)
 
     return session
 
@@ -285,17 +263,3 @@ async def destroy_playback_session(
     return deleted
 
 
-def build_playback_stream_url(stream_name: str) -> str:
-    """
-    Build the frontend-facing WebSocket/MSE URL for a playback stream.
-
-    Uses the same go2rtc WebSocket path as live view — the only difference
-    is the stream_name parameter.
-
-    The frontend connects to:
-      ws://<host>/go2rtc/api/ws?src=<stream_name>
-
-    This function returns the relative path that the frontend can use
-    to construct the full URL based on window.location.host.
-    """
-    return f"/go2rtc/api/ws?src={stream_name}"

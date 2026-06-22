@@ -37,7 +37,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.dependencies import get_current_user, require_permission, user_has_permission
+from app.api.v1.dependencies import get_current_user, get_current_user_stream, require_permission, user_has_permission
 from app.db.session import get_db
 from app.models.audit_log import AuditLog
 from app.models.discovered_nvr import DiscoveredNVR
@@ -56,6 +56,7 @@ from app.schemas.playback import (
 )
 from app.services.playback.download_service import (
     DownloadError,
+    TEMP_DIR,
     build_download_filename,
     stream_recording,
 )
@@ -65,10 +66,8 @@ from app.services.playback.hikvision_playback import (
 )
 from app.services.playback.acti_playback import probe_playback_available
 from app.services.playback.playback_manager import (
-    Go2RTCError,
     PlaybackManagerError,
     PrefetchError,
-    build_playback_stream_url,
     create_playback_session,
     destroy_playback_session,
 )
@@ -76,6 +75,9 @@ from app.services.playback.playback_session import (
     extend_session_ttl,
     get_session,
     get_session_temp_file_path,
+    is_session_file_complete,
+    mark_session_file_complete,
+    set_session_temp_file,
 )
 from app.services.playback.timeline_parser import (
     build_timeline,
@@ -103,6 +105,18 @@ async def _get_nvr_or_404(db: AsyncSession, device_id: UUID) -> DiscoveredNVR:
             detail=f"Device {device_id} not found",
         )
     return nvr
+
+
+def _check_nvr_site_access(nvr: DiscoveredNVR, user) -> None:
+    """Raise 403 if a REGIONAL user doesn't have access to the NVR's site."""
+    if user.has_any_role(["ADMIN", "IT", "MANAGER"]):
+        return
+    allowed_codes = {site.code for site in user.sites}
+    if not nvr.site_code or nvr.site_code not in allowed_codes:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this site",
+        )
 
 
 async def _audit(
@@ -140,7 +154,7 @@ async def search_recordings_endpoint(
     body: PlaybackSearchRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_permission("playback.view")),
+    current_user: User = Depends(require_permission("playback:view")),
 ):
     """
     Search for recording segments on a Hikvision NVR.
@@ -149,6 +163,7 @@ async def search_recordings_endpoint(
     Credentials are fetched from the database — never from the request.
     """
     nvr = await _get_nvr_or_404(db, body.device_id)
+    _check_nvr_site_access(nvr, current_user)
 
     # Ensure datetimes are UTC-aware
     start = body.start_time
@@ -229,13 +244,14 @@ async def get_timeline_endpoint(
     body: PlaybackSearchRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_permission("playback.view")),
+    current_user: User = Depends(require_permission("playback:view")),
 ):
     """
     Return a structured timeline (recording blocks + gap blocks) for the
     requested time window.  Useful for rendering the timeline scrubber.
     """
     nvr = await _get_nvr_or_404(db, body.device_id)
+    _check_nvr_site_access(nvr, current_user)
 
     start = body.start_time
     end = body.end_time
@@ -318,7 +334,7 @@ async def create_session_endpoint(
     body: PlaybackSessionRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_permission("playback.view")),
+    current_user: User = Depends(require_permission("playback:view")),
 ):
     """
     Create a playback session for a recorded segment.
@@ -334,6 +350,7 @@ async def create_session_endpoint(
     Only the stream_name changes.
     """
     nvr = await _get_nvr_or_404(db, body.device_id)
+    _check_nvr_site_access(nvr, current_user)
 
     start = body.start_time
     end = body.end_time
@@ -341,9 +358,6 @@ async def create_session_endpoint(
         start = start.replace(tzinfo=timezone.utc)
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
-
-    vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
-    is_prefetched = vendor == "acti_snvr"
 
     try:
         session = await create_playback_session(
@@ -355,16 +369,10 @@ async def create_session_endpoint(
             created_by=current_user.id,
         )
     except PrefetchError as exc:
-        logger.error("ACTi recording prefetch failed: %s", exc)
+        logger.error("Recording prefetch failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Recording download failed: {exc}",
-        )
-    except Go2RTCError as exc:
-        logger.error("go2rtc stream registration failed: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Stream registration failed: {exc}",
         )
     except PlaybackManagerError as exc:
         logger.error("Playback session creation failed: %s", exc)
@@ -382,15 +390,13 @@ async def create_session_endpoint(
         ip_address=request.client.host if request.client else None,
     )
 
-    if is_prefetched:
-        stream_url = f"/api/v1/playback/session/{session.id}/stream"
-    else:
-        stream_url = build_playback_stream_url(session.stream_name)
+    vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
+    is_prefetched = vendor == "acti_snvr"
 
     return PlaybackSessionResponse(
         session_id=session.id,
         stream_name=session.stream_name,
-        stream_url=stream_url,
+        stream_url=f"/api/v1/playback/session/{session.id}/stream",
         is_prefetched=is_prefetched,
         expires_at=session.expires_at,
         device_id=session.device_id,
@@ -412,7 +418,7 @@ async def create_session_endpoint(
 async def heartbeat_session_endpoint(
     session_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_permission("playback.view")),
+    current_user: User = Depends(require_permission("playback:view")),
 ):
     """
     Extend the expiry of an active playback session.
@@ -450,7 +456,7 @@ async def delete_session_endpoint(
     session_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_permission("playback.view")),
+    current_user: User = Depends(require_permission("playback:view")),
 ):
     """
     Destroy a playback session.
@@ -484,40 +490,121 @@ async def delete_session_endpoint(
 
 
 # ---------------------------------------------------------------------------
-# GET /playback/session/{id}/stream  — serve prefetched MP4 file
+# GET /playback/session/{id}/stream
+# ACTi  → serve the pre-downloaded MP4 file (FileResponse, seekable)
+# Others → stream RTSP → fragmented MP4 on the fly (fast start, any length)
+#
+# Accepts Bearer token via Authorization header OR ?token= query param
+# so that <video src="…?token=…"> works without JS fetch.
 # ---------------------------------------------------------------------------
 
 @router.get(
     "/session/{session_id}/stream",
-    summary="Stream a prefetched ACTi recording (MP4)",
+    summary="Stream a playback recording",
 )
-async def stream_prefetched_recording(
+async def stream_session_recording(
     session_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission("playback.view")),
+    _: User = Depends(get_current_user_stream),
 ):
-    """
-    Stream the server-side MP4 file that was pre-downloaded from an ACTi SNVR.
-
-    Supports HTTP Range requests so the browser can seek within the recording.
-    Only available for sessions created with is_prefetched=True.
-    """
     session = await get_session(db, session_id)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
+    # If a complete cached file exists (ACTi prefetch OR previous Hikvision stream
+    # that ran to completion), serve it directly — instant start, full seeking.
     temp_path = await get_session_temp_file_path(str(session_id))
-    if not temp_path or not os.path.exists(temp_path):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Prefetched recording not found — session may have expired",
+    file_done  = await is_session_file_complete(str(session_id))
+    if temp_path and os.path.exists(temp_path) and file_done:
+        return FileResponse(
+            path=temp_path,
+            media_type="video/mp4",
+            filename=f"recording_ch{session.channel}.mp4",
         )
 
-    return FileResponse(
-        path=temp_path,
-        media_type="video/mp4",
-        filename=f"recording_ch{session.channel}.mp4",
+    # Live stream path — RTSP → fragmented MP4.
+    # Simultaneously writes a seekable faststart file so subsequent requests
+    # (replay, download) can be served from disk without hitting the NVR again.
+    nvr = await _get_nvr_or_404(db, session.device_id)
+
+    start = session.start_time
+    end   = session.end_time
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+
+    # Destination for the dual-output file
+    out_path = os.path.join(TEMP_DIR, f"pb_{session_id.hex}.mp4")
+    await set_session_temp_file(str(session_id), out_path)
+
+    sid = str(session_id)
+
+    async def _on_file_complete() -> None:
+        await mark_session_file_complete(sid)
+
+    gen = stream_recording(
+        nvr=nvr,
+        channel=session.channel,
+        start_time=start,
+        end_time=end,
+        out_path=out_path,
+        on_file_complete=_on_file_complete,
     )
+
+    first_chunk: bytes | None = None
+    try:
+        async for chunk in gen:
+            first_chunk = chunk
+            break
+    except DownloadError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+    if first_chunk is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="NVR returned no data — check RTSP connectivity",
+        )
+
+    async def _body() -> AsyncIterator[bytes]:
+        yield first_chunk
+        async for chunk in gen:
+            yield chunk
+
+    return StreamingResponse(
+        _body(),
+        media_type="video/mp4",
+        headers={"Cache-Control": "no-cache, no-store"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /playback/session/{id}/cache-status
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/session/{session_id}/cache-status",
+    summary="Check whether the session recording is fully cached on the server",
+)
+async def get_session_cache_status(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user_stream),
+):
+    session = await get_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    temp_path  = await get_session_temp_file_path(str(session_id))
+    file_done  = await is_session_file_complete(str(session_id))
+    file_size  = os.path.getsize(temp_path) if temp_path and os.path.exists(temp_path) else 0
+
+    return {
+        "session_id":    str(session_id),
+        "file_complete": file_done,
+        "file_size_mb":  round(file_size / 1_048_576, 2),
+        "file_path_set": temp_path is not None,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -532,7 +619,7 @@ async def download_recording_endpoint(
     body: PlaybackDownloadRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_permission("playback.download")),
+    current_user: User = Depends(require_permission("playback:download")),
 ):
     """
     Stream a recording clip directly from the NVR via ffmpeg.
@@ -543,6 +630,7 @@ async def download_recording_endpoint(
     Credentials are never exposed to the frontend.
     """
     nvr = await _get_nvr_or_404(db, body.device_id)
+    _check_nvr_site_access(nvr, current_user)
 
     start = body.start_time
     end = body.end_time

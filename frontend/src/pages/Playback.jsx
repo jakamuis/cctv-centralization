@@ -21,9 +21,8 @@ import {
   Video,
   FileVideo,
   AlertCircle,
-  WifiOff,
 } from 'lucide-react'
-import { discoveryApi, playbackApi } from '../api'
+import { discoveryApi, playbackApi, getAuthToken } from '../api'
 import PlaybackTimeline from '../components/playback/PlaybackTimeline'
 import PlaybackDownloadDialog from '../components/playback/PlaybackDownloadDialog'
 
@@ -101,9 +100,9 @@ function StatusBadge({ status }) {
 // Used for ACTi SNVR sessions where the recording was pre-downloaded to server.
 
 function NativeVideoPlayer({ streamUrl }) {
-  const fullUrl = streamUrl.startsWith('http')
-    ? streamUrl
-    : `${window.location.origin}${streamUrl}`
+  const token = getAuthToken()
+  const base = streamUrl.startsWith('http') ? streamUrl : `${window.location.origin}${streamUrl}`
+  const fullUrl = `${base}${base.includes('?') ? '&' : '?'}token=${encodeURIComponent(token || '')}`
 
   return (
     <video
@@ -113,177 +112,6 @@ function NativeVideoPlayer({ streamUrl }) {
       playsInline
       style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
     />
-  )
-}
-
-// ─── MSE Playback Player ──────────────────────────────────────────────────────
-// Handles: WebSocket/MSE connection, heartbeat, 15 s connection timeout,
-//          and video status overlay (connecting / playing / error).
-// Session deletion is the caller's (PlaybackView's) responsibility.
-
-function MsePlaybackPlayer({ streamName, sessionId }) {
-  const videoRef   = useRef(null)
-  const wsRef      = useRef(null)
-  const msRef      = useRef(null)
-  const sbRef      = useRef(null)
-  const bufRef     = useRef(new Uint8Array(4 * 1024 * 1024))
-  const bufLen     = useRef(0)
-  const timeoutRef = useRef(null)
-
-  const [videoStatus, setVideoStatus] = useState('connecting')
-
-  // ── Heartbeat: keep session alive every 60 s ────────────────────────────────
-  useEffect(() => {
-    if (!sessionId) return
-    const id = setInterval(() => {
-      playbackApi.heartbeat(sessionId).catch(() => {})
-    }, 60_000)
-    return () => clearInterval(id)
-  }, [sessionId])
-
-  // ── MSE / WebSocket connection ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!streamName || !videoRef.current) return
-
-    // Reset state for new stream
-    setVideoStatus('connecting')
-    clearTimeout(timeoutRef.current)
-
-    if (wsRef.current)  { try { wsRef.current.close()      } catch {} wsRef.current = null }
-    if (msRef.current)  { try { msRef.current.endOfStream() } catch {} msRef.current = null }
-    sbRef.current = null
-    bufLen.current = 0
-    if (videoRef.current) { videoRef.current.src = ''; videoRef.current.load() }
-
-    const video = videoRef.current
-    video.muted = false
-
-    const CODECS = [
-      'avc1.640029', 'avc1.64002A', 'avc1.640033',
-      'hvc1.1.6.L153.B0', 'mp4a.40.2', 'mp4a.40.5', 'opus',
-    ]
-    const supported = CODECS.filter((c) => {
-      const type = c.includes('vc1') ? `video/mp4; codecs="${c}"` : `audio/mp4; codecs="${c}"`
-      return video.canPlayType(type) !== ''
-    }).join(',')
-
-    const ms = new MediaSource()
-    msRef.current = ms
-    video.src = URL.createObjectURL(ms)
-
-    ms.addEventListener('sourceopen', () => {
-      URL.revokeObjectURL(video.src)
-      const wsProto    = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const go2rtcHost = window.location.hostname === 'localhost'
-        ? 'localhost:1984'
-        : `${window.location.hostname}:1984`
-      const wsUrl = `${wsProto}//${go2rtcHost}/api/ws?src=${encodeURIComponent(streamName)}`
-      const ws = new WebSocket(wsUrl)
-      ws.binaryType = 'arraybuffer'
-      wsRef.current = ws
-
-      ws.onopen = () => ws.send(JSON.stringify({ type: 'mse', value: supported }))
-
-      ws.onmessage = (ev) => {
-        if (typeof ev.data === 'string') {
-          const msg = JSON.parse(ev.data)
-          if (msg.type === 'mse') {
-            try {
-              const sb = ms.addSourceBuffer(msg.value)
-              sb.mode = 'segments'
-              sbRef.current = sb
-              sb.addEventListener('updateend', () => {
-                if (!sb.updating && bufLen.current > 0) {
-                  try { sb.appendBuffer(bufRef.current.slice(0, bufLen.current)); bufLen.current = 0 } catch {}
-                }
-                if (!sb.updating && sb.buffered?.length) {
-                  const end = sb.buffered.end(sb.buffered.length - 1)
-                  const s0  = sb.buffered.start(0)
-                  if (end - 30 > s0 + 5) { try { sb.remove(s0, s0 + 5) } catch {} }
-                }
-              })
-            } catch {}
-          }
-        } else {
-          const sb = sbRef.current
-          if (!sb) return
-          const data = new Uint8Array(ev.data)
-          if (sb.updating || bufLen.current > 0) {
-            bufRef.current.set(data, bufLen.current)
-            bufLen.current += data.byteLength
-          } else {
-            try { sb.appendBuffer(ev.data) } catch {}
-          }
-        }
-      }
-
-      ws.onerror = () => {}
-      ws.onclose = () => {
-        wsRef.current = null
-        // If WebSocket closes before video started playing, mark as error
-        setVideoStatus((v) => (v === 'connecting' ? 'error' : v))
-      }
-    }, { once: true })
-
-    // Video playing → clear timeout and mark as playing
-    const onPlaying = () => {
-      clearTimeout(timeoutRef.current)
-      setVideoStatus('playing')
-    }
-    const onError = () => setVideoStatus('error')
-    video.addEventListener('playing', onPlaying, { once: true })
-    video.addEventListener('error',   onError)
-
-    video.addEventListener('canplay', () => {
-      video.play().catch(() => {})
-    }, { once: true })
-
-    // 15-second connection timeout
-    timeoutRef.current = setTimeout(() => {
-      setVideoStatus((v) => (v === 'connecting' ? 'error' : v))
-    }, 15_000)
-
-    return () => {
-      clearTimeout(timeoutRef.current)
-      video.removeEventListener('playing', onPlaying)
-      video.removeEventListener('error',   onError)
-      if (wsRef.current)  { try { wsRef.current.close()      } catch {} wsRef.current = null }
-      if (msRef.current)  { try { msRef.current.endOfStream() } catch {} msRef.current = null }
-      sbRef.current = null
-      bufLen.current = 0
-      if (videoRef.current) { videoRef.current.src = ''; videoRef.current.load() }
-    }
-  }, [streamName])
-
-  return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* Connecting overlay */}
-      {videoStatus === 'connecting' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-10 gap-3">
-          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-muted-foreground">Connecting to playback stream…</p>
-        </div>
-      )}
-      {/* Error overlay */}
-      {videoStatus === 'error' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10 gap-3">
-          <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-            <WifiOff size={22} className="text-red-400" />
-          </div>
-          <div className="text-center">
-            <p className="text-xs text-red-400 font-medium">Playback stream unavailable</p>
-            <p className="text-[10px] text-muted-foreground mt-1">Check NVR connectivity · go2rtc logs</p>
-          </div>
-        </div>
-      )}
-      <video
-        ref={videoRef}
-        playsInline
-        autoPlay
-        controls
-        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
-      />
-    </div>
   )
 }
 
@@ -627,7 +455,7 @@ function PlaybackLeftPane({
 // ─── Main Area ────────────────────────────────────────────────────────────────
 
 function PlaybackMainArea({
-  selectedCamera, selectedNvr,
+  selectedCamera,
   selectedDate, startTime, endTime,
   session, sessionLoading, sessionError,
   segments,
@@ -640,6 +468,32 @@ function PlaybackMainArea({
   const camName   = selectedCamera?.name || '—'
   const dateLabel = selectedDate ? formatDateShort(selectedDate) : '—'
   const timeLabel = startTime && endTime ? `${startTime} – ${endTime}` : ''
+
+  // Elapsed counter while session is loading — drives the ACTi countdown
+  const [loadingElapsed, setLoadingElapsed] = useState(0)
+  useEffect(() => {
+    if (!sessionLoading) { setLoadingElapsed(0); return }
+    const id = setInterval(() => setLoadingElapsed(s => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [sessionLoading])
+
+  // Clip duration in seconds from the time-range strings ("HH:MM")
+  const clipDuration = (() => {
+    if (!startTime || !endTime) return 0
+    const [sh, sm] = startTime.split(':').map(Number)
+    const [eh, em] = endTime.split(':').map(Number)
+    return Math.max(0, (eh * 60 + em - sh * 60 - sm) * 60)
+  })()
+
+  // Both ACTi and Hikvision now pre-fetch the full clip before showing the player.
+  // Show a real countdown based on clip duration (= expected download time at 1× real-time).
+  const estimated = clipDuration > 0 ? clipDuration : null
+  const remaining = estimated ? Math.max(0, estimated - loadingElapsed) : null
+
+  const fmtTime = (s) => {
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60)
+    return m > 0 ? `${m}m ${s < 0 ? 0 : sec}s` : `${sec}s`
+  }
 
   return (
     <section className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
@@ -689,32 +543,37 @@ function PlaybackMainArea({
         >
           {session ? (
             <div className="absolute inset-0">
-              {session.is_prefetched ? (
-                <NativeVideoPlayer
-                  key={session.session_id}
-                  streamUrl={session.stream_url}
-                />
-              ) : (
-                <MsePlaybackPlayer
-                  key={session.session_id}
-                  streamName={session.stream_name}
-                  sessionId={session.session_id}
-                />
-              )}
+              <NativeVideoPlayer
+                key={session.session_id}
+                streamUrl={session.stream_url}
+              />
             </div>
           ) : sessionLoading ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
               <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
                 <Video size={26} className="text-primary animate-pulse" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                {selectedNvr?.vendor === 'acti_snvr'
-                  ? 'Downloading recording from device…'
-                  : 'Starting playback stream…'}
-              </p>
-              {selectedNvr?.vendor === 'acti_snvr' && (
-                <p className="text-[10px] text-muted-foreground/60">This may take a minute depending on clip length</p>
-              )}
+
+              <p className="text-xs text-muted-foreground">Downloading recording from device…</p>
+
+              {/* Progress bar */}
+              <div className="w-full max-w-xs">
+                <div className="flex justify-between text-[10px] text-muted-foreground/70 mb-1">
+                  <span>{estimated ? `${Math.min(100, Math.round((loadingElapsed / estimated) * 100))}%` : '…'}</span>
+                  <span style={{ color: '#60a5fa', fontWeight: 600 }}>
+                    {remaining !== null ? (remaining <= 0 ? 'almost done…' : `~${fmtTime(remaining)} remaining`) : ''}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-1000"
+                    style={{ width: estimated ? `${Math.min(100, (loadingElapsed / estimated) * 100)}%` : '0%' }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground/50 mt-2 text-center">
+                  {fmtTime(loadingElapsed)} elapsed · clip is {clipDuration > 0 ? fmtTime(clipDuration) : '…'} long
+                </p>
+              </div>
             </div>
           ) : searchLoading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
@@ -840,6 +699,9 @@ export default function PlaybackView() {
   // Download dialog
   const [downloadOpen, setDownloadOpen] = useState(false)
 
+  // Used to cancel the cache-status polling when user closes/changes session
+  const prefetchPollRef = useRef({ cancel: false })
+
   // Sync session start-time refs so the cursor interval can read them without stale closure
   useEffect(() => {
     if (session) {
@@ -950,8 +812,15 @@ export default function PlaybackView() {
 
   const handlePlay = useCallback(async () => {
     if (!selectedNvr || !selectedCamera || !selectedDate) return
+
+    // Cancel any in-progress poll
+    prefetchPollRef.current.cancel = true
+    const poll = { cancel: false }
+    prefetchPollRef.current = poll
+
     setSessionLoading(true)
     setSessionError('')
+    setSession(null)
 
     const start = buildDateTime(selectedDate, startTime)
     const end   = buildDateTime(selectedDate, endTime)
@@ -960,19 +829,55 @@ export default function PlaybackView() {
       const data = await playbackApi.createSession(
         selectedNvr.id, selectedCamera.channel_id, start, end
       )
-      setSession(data)
+
+      // ACTi: file already ready on the server (synchronous prefetch in backend)
+      if (data.is_prefetched) {
+        setSession(data)
+        return
+      }
+
+      // Hikvision / Uniview: background prefetch is running on the server.
+      // Poll cache-status until file_complete = true, then show the seekable player.
+      const token = getAuthToken()
+      const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
+      const maxWaitMs = Math.max(180_000, ((end - start) / 1000) * 2 * 1000)
+      const started = Date.now()
+
+      while (!poll.cancel) {
+        await new Promise(r => setTimeout(r, 2000))
+        if (poll.cancel) return
+
+        try {
+          const r = await fetch(
+            `${API_BASE}/playback/session/${data.session_id}/cache-status?token=${encodeURIComponent(token || '')}`,
+          )
+          if (r.ok) {
+            const s = await r.json()
+            if (s.file_complete) {
+              setSession(data)
+              return
+            }
+          }
+        } catch { /* network hiccup, keep polling */ }
+
+        if (Date.now() - started > maxWaitMs) {
+          throw new Error('Playback preparation timed out — the clip may be too long or the NVR is busy')
+        }
+      }
     } catch (e) {
+      if (poll.cancel) return   // user navigated away — suppress error
       console.error('[Playback] Session creation failed:', e)
-      // Store in sessionError so it shows prominently in the main area
-      setSessionError(e.message || 'Failed to start playback — check backend and go2rtc logs')
+      setSessionError(e.message || 'Failed to start playback')
     } finally {
-      setSessionLoading(false)
+      if (!poll.cancel) setSessionLoading(false)
     }
   }, [selectedNvr, selectedCamera, selectedDate, startTime, endTime])
 
   const handleCloseSession = useCallback(() => {
+    prefetchPollRef.current.cancel = true
     const current = session
     setSession(null)
+    setSessionLoading(false)
     setSessionError('')
     if (current?.session_id) {
       playbackApi.deleteSession(current.session_id).catch(() => {})
@@ -1035,7 +940,6 @@ export default function PlaybackView() {
 
       <PlaybackMainArea
         selectedCamera={selectedCamera}
-        selectedNvr={selectedNvr}
         selectedDate={selectedDate}
         startTime={startTime}
         endTime={endTime}
@@ -1059,6 +963,7 @@ export default function PlaybackView() {
         startTime={buildDateTime(selectedDate, startTime)}
         endTime={buildDateTime(selectedDate, endTime)}
         deviceName={selectedNvr?.name || selectedNvr?.ip}
+        session={session}
       />
     </div>
   )

@@ -49,12 +49,12 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
-# from app.api.v1.dependencies import get_current_user  # TEMP: disabled for local testing
+from app.api.v1.dependencies import get_current_user
 from app.db.session import get_db
 from app.discovery.csv_loader import parse_csv_rows
 from app.discovery.sync_engine import run_sync, _sync_single_device
 from app.discovery.schemas import SyncResponse, CsvDeviceRow, DeviceSyncResult
-# from app.models.user import User  # TEMP: not needed without auth
+from app.models.user import User
 from app.repositories.discovery import DiscoveryRepository
 from app.core.config import settings
 
@@ -357,15 +357,13 @@ async def list_nvrs(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    # TEMP: auth disabled for local testing — re-enable before production
-    # current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Return a list of all NVRs that have been synced from the Google Sheet.
-
-    Credentials (username / password) are excluded from the response.
+    Return a list of discovered NVRs.
+    REGIONAL users only see NVRs whose code matches their assigned sites.
+    Credentials are excluded from the response.
     """
-
     repo = DiscoveryRepository(db)
     nvrs = await repo.list_nvrs(
         code=code,
@@ -374,7 +372,11 @@ async def list_nvrs(
         limit=limit,
     )
 
-    # Serialize manually to exclude credentials
+    # Site-scope enforcement for REGIONAL role
+    if current_user.has_role("REGIONAL"):
+        allowed_codes = {site.code for site in current_user.sites}
+        nvrs = [nvr for nvr in nvrs if nvr.site_code and nvr.site_code in allowed_codes]
+
     return [_nvr_to_dict(nvr) for nvr in nvrs]
 
 
@@ -390,8 +392,7 @@ async def list_nvrs(
 async def list_nvr_channels(
     nvr_id: UUID,
     db: AsyncSession = Depends(get_db),
-    # TEMP: auth disabled for local testing — re-enable before production
-    # current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Return all camera channels discovered on the specified NVR.
@@ -405,6 +406,14 @@ async def list_nvr_channels(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"NVR {nvr_id} not found",
         )
+
+    if current_user.has_role("REGIONAL"):
+        allowed_codes = {site.code for site in current_user.sites}
+        if not nvr.site_code or nvr.site_code not in allowed_codes:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this site",
+            )
 
     channels = await repo.list_channels(nvr_id)
 

@@ -85,6 +85,10 @@ class DiscoveredNVR(Base):
     # Values: "hikvision" (ISAPI over RTSP) | "acti_snvr" (HTTP multipart/H264)
     vendor = Column(String(50), nullable=False, default="hikvision")
 
+    # Epicor plant code linking this NVR to a site (e.g. "SGI051").
+    # Null = not yet mapped. REGIONAL users cannot access unmapped NVRs.
+    site_code = Column(String(50), nullable=True, index=True)
+
     # ---- device info (from ISAPI) ----
 
     device_name = Column(String(255), nullable=True)

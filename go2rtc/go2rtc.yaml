@@ -345,23 +345,23 @@ streams:
   sig-lampung-ultimate_9:
     - ffmpeg:rtsp://admin:SAMATOR2024@192.168.160.200:554/Streaming/Channels/901#video=h264
   sgi-batam_1:
-    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/1#video=h264
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/101#video=h264
   sgi-batam_12:
-    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/12#video=h264
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/1201#video=h264
   sgi-batam_11:
-    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/11#video=h264
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/1101#video=h264
   sgi-batam_10:
-    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/10#video=h264
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/1001#video=h264
   sgi-batam_13:
-    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/13#video=h264
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/1301#video=h264
   sgi-batam_14:
-    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/14#video=h264
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/1401#video=h264
   sgi-batam_2:
-    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/2#video=h264
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/201#video=h264
   sgi-batam_4:
-    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/4#video=h264
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/401#video=h264
   sgi-batam_3:
-    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/3#video=h264
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/301#video=h264
   sgi-bandung_2:
     - ffmpeg:rtsp://admin:Samator1%23@10.70.170.200:554/Streaming/Channels/201#video=h264
   sgi-bandung_4:
@@ -516,4 +516,12 @@ streams:
     - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/601#video=h264
   sig-medan-plant_5:
     - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/501#video=h264
+  ho-sby-lantai-15_2:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/201#video=h264
+  ho-sby-lantai-15_1:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/101#video=h264
+  ho-sby-lantai-15_3:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/301#video=h264
+  ho-sby-lantai-15_4:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/401#video=h264
 

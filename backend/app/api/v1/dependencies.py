@@ -5,14 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from starlette.requests import Request
+from typing import Optional, List
+import uuid
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.models.user import User
+from app.models.user import User, user_sites
 from app.security import jwt
 from app.models.role import Role
 from app.models.camera import Camera
-from app.models.branch import Branch
+from app.models.site import Site
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -37,10 +39,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     result = await db.execute(
         select(User)
         .where(User.id == user_id)
-        .options(selectinload(User.roles).selectinload(Role.permissions))
+        .options(
+            selectinload(User.roles).selectinload(Role.permissions),
+            selectinload(User.sites),
+        )
     )
     user = result.scalar_one_or_none()
-    
+
     if user is None or not user.is_active:
         raise credentials_exception
     return user
@@ -74,58 +79,95 @@ def require_permission(permission_code: str):
     return permission_checker
 
 
+async def get_current_user_stream(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """
+    Like get_current_user but also accepts ?token= query param.
+    Used only for media stream endpoints where <video src> can't send headers.
+    """
+    token: Optional[str] = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    if not token:
+        token = request.query_params.get("token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode_token(token)
+        if not payload:
+            raise credentials_exception
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
+            raise credentials_exception
+        user_id = int(user_id_str)
+    except (JWTError, ValueError, TypeError):
+        raise credentials_exception
+
+    result = await db.execute(
+        select(User)
+        .where(User.id == user_id)
+        .options(
+            selectinload(User.roles).selectinload(Role.permissions),
+            selectinload(User.sites),
+        )
+    )
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise credentials_exception
+    return user
+
+
 def user_has_permission(user: User, permission_code: str) -> bool:
     perms = {perm.code for role in user.roles for perm in role.permissions}
     return permission_code in perms
 
 
 def has_camera_access(user: User, camera: Camera) -> bool:
-    """
-    Branch/camera scope validation placeholder.
-    - SUPER_ADMIN: full access
-    - Otherwise: require camera.view permission. Fine-grained scoping
-      (by user->branch or user->camera mapping) can be added later.
-    """
-    if user.has_role("SUPER_ADMIN"):
+    if user.has_any_role(["ADMIN", "IT", "MANAGER"]):
         return True
-    return user_has_permission(user, "camera.view")
+    if user.has_role("REGIONAL"):
+        allowed = {site.id for site in user.sites}
+        return camera.site_id in allowed if hasattr(camera, "site_id") else False
+    return False
 
 
-async def require_branch_access(branch_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    # SUPER_ADMIN bypass
-    if user.has_role("SUPER_ADMIN"):
+def get_allowed_site_ids(user: User):
+    """
+    Returns list of allowed site UUIDs, or None meaning 'all sites'.
+    ADMIN / IT / MANAGER → None (unrestricted).
+    REGIONAL → explicit list from user_sites.
+    """
+    if user.has_any_role(["ADMIN", "IT", "MANAGER"]):
+        return None
+    return [site.id for site in user.sites]
+
+
+def require_site_access(site_id):
+    """
+    Dependency factory: raises 403 if a REGIONAL user does not have access to site_id.
+    Pass the site UUID directly or as a path param dependency.
+    """
+    async def checker(user: User = Depends(get_current_user)):
+        if user.has_any_role(["ADMIN", "IT", "MANAGER"]):
+            return user
+        allowed = {site.id for site in user.sites}
+        if site_id not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this site",
+            )
         return user
-
-    # REGIONAL_ADMIN can access branches in their regions
-    if user.has_role("REGIONAL_ADMIN"):
-        user_regions = {branch.region_id for branch in user_branches(user)}
-        result = await db.execute(select(Branch).where(Branch.id == branch_id))
-        branch = result.scalar_one_or_none()
-        if branch and branch.region_id in user_regions:
-            return user
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User does not have access to this branch",
-        )
-
-    # BRANCH_OPERATOR can access own branch only
-    if user.has_role("BRANCH_OPERATOR"):
-        user_branch_ids = {branch.id for branch in user_branches(user)}
-        if branch_id in user_branch_ids:
-            return user
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User does not have access to this branch",
-        )
-
-    # VIEWER or others no access by default
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="User does not have access to this branch",
-    )
-
-
-def user_branches(user: User):
-    # This function should return branches assigned to the user
-    # Placeholder: implement actual user-branch relationship
-    return []
+    return checker

@@ -121,11 +121,12 @@ function normaliseUser(raw) {
   const role = mapBackendRole(rawRole)
 
   return {
-    username: raw.username || raw.email || 'user',
-    email:    raw.email    || '',
-    role,                          // "admin" | "operator" | "viewer"
-    rawRole:  rawRole,             // keep original for debugging
-    id:       raw.id || null,
+    username:  raw.username  || raw.email || 'user',
+    full_name: raw.full_name || raw.username || raw.email || '',
+    email:     raw.email     || '',
+    role,
+    rawRole:   rawRole,
+    id:        raw.id || null,
   }
 }
 
@@ -139,11 +140,16 @@ function mapBackendRole(roleName) {
   if (!roleName) return 'viewer'
   const r = roleName.toUpperCase()
   if (r === 'SUPER_ADMIN' || r === 'ADMIN') return 'admin'
-  if (r === 'OPERATOR')                     return 'operator'
-  if (r === 'VIEWER')                       return 'viewer'
-  // Fallback: try lowercase match
+  if (r === 'IT')                            return 'it'
+  if (r === 'MANAGER')                       return 'manager'
+  if (r === 'REGIONAL')                      return 'regional'
+  if (r === 'OPERATOR')                      return 'operator'
+  if (r === 'VIEWER')                        return 'viewer'
   const lower = roleName.toLowerCase()
   if (lower === 'admin')    return 'admin'
+  if (lower === 'it')       return 'it'
+  if (lower === 'manager')  return 'manager'
+  if (lower === 'regional') return 'regional'
   if (lower === 'operator') return 'operator'
   return 'viewer'
 }

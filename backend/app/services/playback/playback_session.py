@@ -199,6 +199,25 @@ async def get_session_temp_file_path(session_id: str) -> Optional[str]:
     return value if value else None
 
 
+async def set_session_temp_file(session_id: str, path: str) -> None:
+    """Store the temp file path for a session that started as a live stream."""
+    redis = get_redis()
+    await redis.hset(f"playback:session:{session_id}", "temp_file_path", path)
+
+
+async def mark_session_file_complete(session_id: str) -> None:
+    """Mark the session's temp file as fully written (ffmpeg exited cleanly)."""
+    redis = get_redis()
+    await redis.hset(f"playback:session:{session_id}", "file_complete", "1")
+
+
+async def is_session_file_complete(session_id: str) -> bool:
+    """Return True if the session's dual-output file finished writing."""
+    redis = get_redis()
+    val = await redis.hget(f"playback:session:{session_id}", "file_complete")
+    return val == "1"
+
+
 async def _redis_unregister_session(session_id: str) -> None:
     """Remove session from Redis."""
     redis = get_redis()

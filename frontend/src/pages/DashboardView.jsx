@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
 import {
   Camera, Monitor, Bell, Server, Play, RefreshCw, Download,
   Eye, AlertTriangle, UserPlus, Settings, FilmIcon,
@@ -141,6 +142,7 @@ function NvrOverview({ nvrs, loading }) {
 // ─── Dashboard View ───────────────────────────────────────────────────────────
 
 export default function DashboardView() {
+  const { user } = useAuth()
   const [nvrs,      setNvrs]      = useState([])
   const [cameras,   setCameras]   = useState([])
   const [devices,   setDevices]   = useState([])
@@ -266,7 +268,7 @@ export default function DashboardView() {
       {/* Greeting */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-base font-semibold text-foreground">{greeting()}, Admin 👋</h1>
+          <h1 className="text-base font-semibold text-foreground">{greeting()}, {user?.full_name || user?.username || 'User'} 👋</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {loading
               ? 'Loading system status…'

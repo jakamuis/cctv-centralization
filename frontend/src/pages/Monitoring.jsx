@@ -48,22 +48,23 @@ import RolesPermissionsPage from "./RolesPermissions";
 /**
  * Full nav item list.
  *
- * `roles` lists which NORMALISED role keys can see each item.
- * Normalised keys (produced by resolveRole below):
- *   "admin"    → SUPER_ADMIN  — full access
- *   "operator" → OPERATOR     — monitoring, playback, alerts
- *   "viewer"   → VIEWER       — monitoring only
+ * Normalised role keys:
+ *   "admin"    → ADMIN    — full access
+ *   "it"       → IT       — all except role management
+ *   "manager"  → MANAGER  — view/download all sites
+ *   "regional" → REGIONAL — view/download assigned sites only
+ *   "operator" → legacy
+ *   "viewer"   → legacy
  */
 const ALL_NAV_ITEMS = [
-  { icon: LayoutDashboard, label: "Dashboard",          section: "main",       roles: ["admin", "operator", "viewer"] },
-  { icon: Eye,             label: "Live Streams",        section: "main",       roles: ["admin", "operator", "viewer"] },
-  { icon: Monitor,         label: "Monitoring",          section: "main",       roles: ["admin", "operator", "viewer"] },
-  { icon: Play,            label: "Playback",            section: "main",       roles: ["admin", "operator"] },
-  { icon: Bell,            label: "Alerts",              section: "main",       roles: ["admin", "operator"] },
-  { icon: Server,          label: "Devices",             section: "management", roles: ["admin"] },
-  { icon: Camera,          label: "Camera Groups",       section: "management", roles: ["admin"] },
-  { icon: Map,             label: "Maps",                section: "management", roles: ["admin"] },
-  { icon: Users,           label: "Users",               section: "management", roles: ["admin"] },
+  { icon: LayoutDashboard, label: "Dashboard",          section: "main",       roles: ["admin", "it", "manager", "regional", "operator", "viewer"] },
+  { icon: Eye,             label: "Live Streams",        section: "main",       roles: ["admin", "it", "manager", "regional", "operator", "viewer"] },
+  { icon: Play,            label: "Playback",            section: "main",       roles: ["admin", "it", "manager", "regional"] },
+  { icon: Bell,            label: "Alerts",              section: "main",       roles: ["admin", "it", "operator"] },
+  { icon: Server,          label: "Devices",             section: "management", roles: ["admin", "it"] },
+  { icon: Camera,          label: "Camera Groups",       section: "management", roles: ["admin", "it"] },
+  { icon: Map,             label: "Maps",                section: "management", roles: ["admin", "it"] },
+  { icon: Users,           label: "Users",               section: "management", roles: ["admin", "it"] },
   { icon: ShieldCheck,     label: "Roles & Permissions", section: "management", roles: ["admin"] },
   { icon: FileText,        label: "Audit Logs",          section: "management", roles: ["admin"] },
   { icon: Settings,        label: "Settings",            section: "bottom",     roles: ["admin"] },
@@ -80,11 +81,16 @@ function resolveRole(role) {
   if (!role) return "viewer";
   const r = String(role).toUpperCase().trim();
   if (r === "SUPER_ADMIN" || r === "ADMIN") return "admin";
-  if (r === "OPERATOR")                     return "operator";
-  if (r === "VIEWER")                       return "viewer";
-  // Already lowercase-mapped
+  if (r === "IT")                            return "it";
+  if (r === "MANAGER")                       return "manager";
+  if (r === "REGIONAL")                      return "regional";
+  if (r === "OPERATOR")                      return "operator";
+  if (r === "VIEWER")                        return "viewer";
   const lower = String(role).toLowerCase().trim();
   if (lower === "admin")    return "admin";
+  if (lower === "it")       return "it";
+  if (lower === "manager")  return "manager";
+  if (lower === "regional") return "regional";
   if (lower === "operator") return "operator";
   return "viewer";
 }
@@ -99,6 +105,9 @@ function getNavItems(role) {
 function roleBadge(role) {
   const r = resolveRole(role);
   if (r === "admin")    return "Admin";
+  if (r === "it")       return "IT";
+  if (r === "manager")  return "Manager";
+  if (r === "regional") return "Regional";
   if (r === "operator") return "Operator";
   return "Viewer";
 }

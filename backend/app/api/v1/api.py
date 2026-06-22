@@ -54,7 +54,9 @@ async def login(
     request: Request = None
 ):
     result = await db.execute(
-        select(User).where(User.username == form_data.username)
+        select(User).where(
+            (User.username == form_data.username) | (User.email == form_data.username)
+        )
     )
     user = result.scalar_one_or_none()
 
@@ -138,13 +140,13 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
 # USERS
 # =========================
 
-@router.get("/users", dependencies=[Depends(require_role("SUPER_ADMIN"))])
+@router.get("/users", dependencies=[Depends(require_role("ADMIN"))])
 async def list_users(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User))
     return result.scalars().all()
 
 
-@router.post("/users", dependencies=[Depends(require_role("SUPER_ADMIN"))])
+@router.post("/users", dependencies=[Depends(require_role("ADMIN"))])
 async def create_user(user_data: dict, db: AsyncSession = Depends(get_db)):
 
     hashed_password = get_password_hash(user_data["password"])
@@ -174,7 +176,7 @@ async def create_user(user_data: dict, db: AsyncSession = Depends(get_db)):
     return user
 
 
-@router.put("/users/{user_id}", dependencies=[Depends(require_role("SUPER_ADMIN"))])
+@router.put("/users/{user_id}", dependencies=[Depends(require_role("ADMIN"))])
 async def update_user(user_id: int, user_data: dict, db: AsyncSession = Depends(get_db)):
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -206,7 +208,7 @@ async def update_user(user_id: int, user_data: dict, db: AsyncSession = Depends(
     return user
 
 
-@router.delete("/users/{user_id}", dependencies=[Depends(require_role("SUPER_ADMIN"))])
+@router.delete("/users/{user_id}", dependencies=[Depends(require_role("ADMIN"))])
 async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
 
     result = await db.execute(select(User).where(User.id == user_id))
