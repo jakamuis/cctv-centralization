@@ -28,8 +28,8 @@ services:
       STREAMING_GO2RTC_HOST: go2rtc
       # go2rtc internal API URL — backend calls this directly over Docker network
       STREAMING_GO2RTC_API_URL: http://go2rtc:1984
-      # go2rtc public URL the browser uses — routed via nginx on port 8080
-      STREAMING_GO2RTC_PUBLIC_URL: http://localhost:8080
+      # go2rtc public URL the browser uses — routed via nginx on port 80
+      STREAMING_GO2RTC_PUBLIC_URL: http://localhost:80
 
     volumes:
       - ./backend:/app
@@ -142,7 +142,7 @@ services:
     container_name: cctv_nginx
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "80:80"
     volumes:
       - ./streams:/streams:rw
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro

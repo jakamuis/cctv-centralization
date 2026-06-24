@@ -211,7 +211,7 @@ streams:
   smt-cilamaya_2:
     - ffmpeg:rtsp://agicilamaya:samator%232017@192.168.78.200:554/Streaming/Channels/201#video=h264
   arohera-lt3_1:
-    - ffmpeg:rtsp://admin:samator@88@10.11.32.200:554/Streaming/Channels/101#video=h264
+    - ffmpeg:rtsp://admin:samator%4088@10.11.32.200:554/Streaming/Channels/101#video=h264
   arohera-lt3_2:
     - ffmpeg:rtsp://admin:samator%4088@10.11.32.200:554/Streaming/Channels/201#video=h264
   arohera-lt3_3:
@@ -516,12 +516,78 @@ streams:
     - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/601#video=h264
   sig-medan-plant_5:
     - ffmpeg:rtsp://anekagasmedan:anekagas%232017@192.168.152.101:554/Streaming/Channels/501#video=h264
-  ho-sby-lantai-15_2:
-    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/201#video=h264
-  ho-sby-lantai-15_1:
-    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/101#video=h264
+  ame-gudang-krian_1:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c1/s0/live#video=h264
+  ame-gudang-krian_10:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c10/s0/live#video=h264
+  ame-gudang-krian_11:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c11/s0/live#video=h264
+  ame-gudang-krian_12:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c12/s0/live#video=h264
+  ame-gudang-krian_14:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c14/s0/live#video=h264
+  ame-gudang-krian_13:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c13/s0/live#video=h264
+  ame-gudang-krian_16:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c16/s0/live#video=h264
+  ame-gudang-krian_15:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c15/s0/live#video=h264
+  ame-gudang-krian_2:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c2/s0/live#video=h264
+  ame-gudang-krian_4:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c4/s0/live#video=h264
+  ame-gudang-krian_3:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c3/s0/live#video=h264
+  ame-gudang-krian_7:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c7/s0/live#video=h264
+  ame-gudang-krian_5:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c5/s0/live#video=h264
+  ame-gudang-krian_8:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c8/s0/live#video=h264
+  ame-gudang-krian_6:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c6/s0/live#video=h264
+  ame-gudang-krian_9:
+    - ffmpeg:rtsp://whame:samator%232023@10.70.110.201:554/unicast/c9/s0/live#video=h264
   ho-sby-lantai-15_3:
     - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/301#video=h264
+  ho-sby-lantai-15_2:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/201#video=h264
   ho-sby-lantai-15_4:
     - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/401#video=h264
+  ho-sby-lantai-15_1:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/101#video=h264
+  ho-sby-lantai-15_5:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/501#video=h264
+  ho-sby-lantai-15_6:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/601#video=h264
+  ho-sby-lantai-15_7:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/701#video=h264
+  ho-sby-lantai-15_8:
+    - ffmpeg:rtsp://admin:Aremania87@10.15.18.200:554/Streaming/Channels/801#video=h264
+  depo-purwodadi_1:
+    - ffmpeg:rtsp://admin:S%40matorGroup@10.70.186.200:554/Streaming/Channels/101#video=h264
+  depo-purwodadi_2:
+    - ffmpeg:rtsp://admin:S%40matorGroup@10.70.186.200:554/Streaming/Channels/201#video=h264
+  depo-rembang_2:
+    - ffmpeg:rtsp://admin:S%40matorGroup@10.70.185.200:554/Streaming/Channels/201#video=h264
+  depo-rembang_1:
+    - ffmpeg:rtsp://admin:S%40matorGroup@10.70.185.200:554/Streaming/Channels/101#video=h264
+  sgi-batam_6:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/601#video=h264
+  sgi-batam_5:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/501#video=h264
+  sgi-batam_7:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/701#video=h264
+  sgi-batam_9:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/901#video=h264
+  sgi-batam_8:
+    - ffmpeg:rtsp://sgibatam:samator%232017@192.168.70.118:554/Streaming/Channels/801#video=h264
+  satoe_1:
+    - ffmpeg:rtsp://admin:abcd1234@10.70.181.110:554/Streaming/Channels/101#video=h264
+  satoe_2:
+    - ffmpeg:rtsp://admin:abcd1234@10.70.181.110:554/Streaming/Channels/201#video=h264
+  satoe_3:
+    - ffmpeg:rtsp://admin:abcd1234@10.70.181.110:554/Streaming/Channels/301#video=h264
+  satoe_4:
+    - ffmpeg:rtsp://admin:abcd1234@10.70.181.110:554/Streaming/Channels/401#video=h264
 
