@@ -590,4 +590,52 @@ streams:
     - ffmpeg:rtsp://admin:abcd1234@10.70.181.110:554/Streaming/Channels/301#video=h264
   satoe_4:
     - ffmpeg:rtsp://admin:abcd1234@10.70.181.110:554/Streaming/Channels/401#video=h264
+  sgi-tamora_1:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/101#video=h264
+  sgi-tamora_10:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/1001#video=h264
+  sgi-tamora_12:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/1201#video=h264
+  sgi-tamora_11:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/1101#video=h264
+  sgi-tamora_14:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/1401#video=h264
+  sgi-tamora_16:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/1601#video=h264
+  sgi-tamora_13:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/1301#video=h264
+  sgi-tamora_15:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/1501#video=h264
+  sgi-tamora_2:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/201#video=h264
+  sgi-tamora_4:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/401#video=h264
+  sgi-tamora_5:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/501#video=h264
+  sgi-tamora_8:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/801#video=h264
+  sgi-tamora_6:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/601#video=h264
+  sgi-tamora_3:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/301#video=h264
+  sgi-tamora_7:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/701#video=h264
+  sgi-tamora_9:
+    - ffmpeg:rtsp://admin:Admin123@192.168.56.100:554/Streaming/Channels/901#video=h264
+  sgi-padang_3:
+    - ffmpeg:rtsp://admin:Admin123@10.70.219.250:554/Streaming/Channels/301#video=h264
+  sgi-padang_5:
+    - ffmpeg:rtsp://admin:Admin123@10.70.219.250:554/Streaming/Channels/501#video=h264
+  sgi-padang_6:
+    - ffmpeg:rtsp://admin:Admin123@10.70.219.250:554/Streaming/Channels/601#video=h264
+  sgi-padang_2:
+    - ffmpeg:rtsp://admin:Admin123@10.70.219.250:554/Streaming/Channels/201#video=h264
+  sgi-padang_1:
+    - ffmpeg:rtsp://admin:Admin123@10.70.219.250:554/Streaming/Channels/101#video=h264
+  sgi-padang_4:
+    - ffmpeg:rtsp://admin:Admin123@10.70.219.250:554/Streaming/Channels/401#video=h264
+  sgi-padang_8:
+    - ffmpeg:rtsp://admin:Admin123@10.70.219.250:554/Streaming/Channels/801#video=h264
+  sgi-padang_7:
+    - ffmpeg:rtsp://admin:Admin123@10.70.219.250:554/Streaming/Channels/701#video=h264
 

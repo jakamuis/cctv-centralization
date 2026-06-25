@@ -109,7 +109,7 @@ async def _get_nvr_or_404(db: AsyncSession, device_id: UUID) -> DiscoveredNVR:
 
 def _check_nvr_site_access(nvr: DiscoveredNVR, user) -> None:
     """Raise 403 if a REGIONAL user doesn't have access to the NVR's site."""
-    if user.has_any_role(["ADMIN", "IT", "MANAGER"]):
+    if user.has_any_role(["SUPER_ADMIN", "ADMIN", "IT", "MANAGER"]):
         return
     allowed_codes = {site.code for site in user.sites}
     if not nvr.site_code or nvr.site_code not in allowed_codes:
@@ -174,7 +174,10 @@ async def search_recordings_endpoint(
         end = end.replace(tzinfo=timezone.utc)
 
     vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
-    if vendor == "acti_snvr":
+    if vendor == "acti_d32":
+        # ACTi D32 has no recording search API supported yet.
+        segments = []
+    elif vendor == "acti_snvr":
         # ACTi SNVR has no recording search API.
         # Probe the /playback/ endpoint to see if the device actually has
         # recordings at the requested start time before claiming a segment exists.
@@ -261,7 +264,9 @@ async def get_timeline_endpoint(
         end = end.replace(tzinfo=timezone.utc)
 
     vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
-    if vendor == "acti_snvr":
+    if vendor == "acti_d32":
+        segments = []
+    elif vendor == "acti_snvr":
         from app.services.playback.hikvision_playback import RecordingSegment
         has_recording = await probe_playback_available(
             nvr_ip=nvr.nvr_ip,
@@ -391,7 +396,7 @@ async def create_session_endpoint(
     )
 
     vendor = getattr(nvr, "vendor", "hikvision") or "hikvision"
-    is_prefetched = vendor == "acti_snvr"
+    is_prefetched = vendor in ("acti_snvr", "acti_d32")
 
     return PlaybackSessionResponse(
         session_id=session.id,

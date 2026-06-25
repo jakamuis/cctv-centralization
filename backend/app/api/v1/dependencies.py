@@ -41,7 +41,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         .where(User.id == user_id)
         .options(
             selectinload(User.roles).selectinload(Role.permissions),
-            selectinload(User.sites),
         )
     )
     user = result.scalar_one_or_none()
@@ -121,7 +120,6 @@ async def get_current_user_stream(
         .where(User.id == user_id)
         .options(
             selectinload(User.roles).selectinload(Role.permissions),
-            selectinload(User.sites),
         )
     )
     user = result.scalar_one_or_none()

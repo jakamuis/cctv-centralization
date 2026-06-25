@@ -563,6 +563,14 @@ async def start_channel_stream(
             f" {encoded_user} {encoded_pass}{port_suffix}"
             f"#video=h264"
         )
+    elif vendor == "acti_d32":
+        # ACTi D32: RTSP on non-standard port, ONVIF path with literal & chars.
+        # Port stored in rtsp_port (e.g. 7070). Path: /onvif&event&video{N}
+        rtsp_url = (
+            f"ffmpeg:rtsp://{encoded_user}:{encoded_pass}"
+            f"@{nvr.nvr_ip}:{nvr.rtsp_port}"
+            f"/onvif&event&video{channel_id}#video=h264"
+        )
     elif vendor == "uniview":
         # Uniview ZNR/NVR series: RTSP path is /unicast/c{N}/s0/live
         rtsp_url = (

@@ -120,21 +120,47 @@ async def _go2rtc_restore_stream(stream_name: str, source_url: str) -> None:
 # ffmpeg helpers
 # ---------------------------------------------------------------------------
 
-def _make_ffmpeg_cmd(rtsp_url: str, duration_secs: int) -> list[str]:
+def _make_ffmpeg_cmd(rtsp_url: str, duration_secs: int, transcode_video: bool = False) -> list[str]:
+    video_args = (
+        ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "28"]
+        if transcode_video
+        else ["-c:v", "copy"]
+    )
     return [
         "ffmpeg", "-y", "-loglevel", "error",
         "-rtsp_transport", "tcp",
         "-i", rtsp_url,
         "-t", str(duration_secs),
-        "-c:v", "copy", "-c:a", "aac", "-b:a", "64k",
+        *video_args, "-c:a", "aac", "-b:a", "64k",
         "-movflags", "frag_keyframe+empty_moov+default_base_moof",
         "-f", "mp4", "pipe:1",
     ]
 
 
-async def _start_ffmpeg(rtsp_url: str, duration_secs: int) -> asyncio.subprocess.Process:
+async def _probe_video_codec(rtsp_url: str) -> str:
+    """Return 'hevc', 'h264', or '' if probe fails/times out."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "ffprobe", "-v", "quiet", "-rtsp_transport", "tcp",
+            "-show_entries", "stream=codec_name",
+            "-select_streams", "v:0",
+            "-of", "csv=p=0", "-i", rtsp_url,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        try:
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=8.0)
+            return stdout.decode().strip().lower()
+        except asyncio.TimeoutError:
+            proc.kill()
+            return ""
+    except Exception:
+        return ""
+
+
+async def _start_ffmpeg(rtsp_url: str, duration_secs: int, transcode_video: bool = False) -> asyncio.subprocess.Process:
     return await asyncio.create_subprocess_exec(
-        *_make_ffmpeg_cmd(rtsp_url, duration_secs),
+        *_make_ffmpeg_cmd(rtsp_url, duration_secs, transcode_video),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -152,14 +178,15 @@ async def _kill_ffmpeg(proc: asyncio.subprocess.Process) -> str:
 
 
 async def _try_first_chunk(
-    rtsp_url: str, duration_secs: int, timeout: float
+    rtsp_url: str, duration_secs: int, timeout: float,
+    transcode_video: bool = False,
 ) -> tuple[asyncio.subprocess.Process, bytes | None, str]:
     """
     Start ffmpeg and try to get the first chunk within `timeout` seconds.
     Returns (proc, first_chunk_or_None, stderr_so_far).
     If first_chunk is None, proc has been killed and stderr is populated.
     """
-    proc = await _start_ffmpeg(rtsp_url, duration_secs)
+    proc = await _start_ffmpeg(rtsp_url, duration_secs, transcode_video)
     try:
         chunk = await asyncio.wait_for(proc.stdout.read(CHUNK_SIZE), timeout=timeout)
         if chunk:
@@ -215,6 +242,17 @@ async def stream_recording(
     proc: asyncio.subprocess.Process | None = None
     first_chunk: bytes | None = None
 
+    # Probe recording codec — HEVC recordings need transcoding to H.264 for
+    # browser compatibility (MSE only supports H.264 in most browsers).
+    probe_url = tracks_url
+    codec = await _probe_video_codec(probe_url)
+    transcode_video = codec == "hevc"
+    if transcode_video:
+        logger.info(
+            "NVR %s ch=%d: recording codec is HEVC — will transcode to H.264",
+            nvr.nvr_ip, channel,
+        )
+
     # Serialise concurrent connections to the same NVR — most devices only support
     # one RTSP playback stream at a time, so a second simultaneous request would
     # immediately fail.  The lock is held only during the probe phase (≤ 2×timeout),
@@ -232,7 +270,7 @@ async def stream_recording(
                 "Download attempt 1 (tracks): NVR=%s ch=%d %s→%s",
                 nvr.nvr_ip, channel, start_str, end_str,
             )
-            proc, first_chunk, stderr = await _try_first_chunk(tracks_url, duration_secs, FIRST_CHUNK_TIMEOUT)
+            proc, first_chunk, stderr = await _try_first_chunk(tracks_url, duration_secs, FIRST_CHUNK_TIMEOUT, transcode_video)
             if first_chunk:
                 await redis.set(f"nvr_url_hint:{nvr.nvr_ip}", "tracks", ex=_HINT_KEY_TTL)
             elif stderr:
@@ -248,7 +286,7 @@ async def stream_recording(
         if first_chunk is None:
             # --- Attempt 2: PSIA URL ---
             logger.info("Download attempt (PSIA): NVR=%s ch=%d", nvr.nvr_ip, channel)
-            proc, first_chunk, stderr = await _try_first_chunk(psia_url, duration_secs, FIRST_CHUNK_TIMEOUT)
+            proc, first_chunk, stderr = await _try_first_chunk(psia_url, duration_secs, FIRST_CHUNK_TIMEOUT, transcode_video)
             if first_chunk:
                 await redis.set(f"nvr_url_hint:{nvr.nvr_ip}", "psia", ex=_HINT_KEY_TTL)
 
@@ -261,7 +299,7 @@ async def stream_recording(
                         await _go2rtc_delete_stream(freed_stream[0])
                         await asyncio.sleep(3)
                     logger.info("Download attempt (PSIA after slot free): NVR=%s ch=%d", nvr.nvr_ip, channel)
-                    proc, first_chunk, stderr = await _try_first_chunk(psia_url, duration_secs, FIRST_CHUNK_TIMEOUT)
+                    proc, first_chunk, stderr = await _try_first_chunk(psia_url, duration_secs, FIRST_CHUNK_TIMEOUT, transcode_video)
                     if first_chunk:
                         await redis.set(f"nvr_url_hint:{nvr.nvr_ip}", "psia", ex=_HINT_KEY_TTL)
 
@@ -284,12 +322,17 @@ async def stream_recording(
         await _kill_ffmpeg(proc)
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
+        video_args = (
+            ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "28"]
+            if transcode_video
+            else ["-c:v", "copy"]
+        )
         file_cmd = [
             "ffmpeg", "-y", "-loglevel", "error",
             "-rtsp_transport", "tcp",
             "-i", working_url,
             "-t", str(duration_secs),
-            "-c:v", "copy", "-c:a", "aac", "-b:a", "64k",
+            *video_args, "-c:a", "aac", "-b:a", "64k",
             "-movflags", "frag_keyframe+empty_moov+default_base_moof",
             "-f", "mp4", out_path,
         ]
